@@ -765,7 +765,7 @@ initTheme();
 renderLayerTimeline();
 renderTabBar();
 renderAll();
- const CWA_API_KEY = 'CWA-C3121B3D-9761-40F3-B466-CF5AIE9C30FA'; // <-- 把這裡換成你自己申請到的 Authorization 金鑰
+const CWA_API_KEY = 'CWA-C3121B3D-9761-40F3-B466-CF5AIE9C30FA'; // <-- 把這裡換成你自己申請到的 Authorization 金鑰 
 let liveRain = {}; // { 測站名稱: { precipitation, obsTime } }
  
 function renderLiveOverlay(){
@@ -802,14 +802,9 @@ function renderLiveOverlay(){
 async function fetchLiveRain(){
   const statusEl = document.getElementById('liveRainStatus');
   const listEl = document.getElementById('liveRainList');
-  if(!CWA_API_KEY || CWA_API_KEY.includes('請填入')){
-    if(statusEl) statusEl.textContent = '⚠️ 尚未設定氣象署 API 金鑰，請在程式碼中填入 CWA_API_KEY。';
-    return;
-  }
   if(statusEl) statusEl.textContent = '讀取中...';
-  const url = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0002-001?Authorization=${CWA_API_KEY}&downloadType=WEB&format=JSON`;
   try{
-    const res = await fetch(url);
+    const res = await fetch('rain-live.json?t=' + Date.now());
     if(!res.ok) throw new Error('HTTP '+res.status);
     const json = await res.json();
     const stations = (json.records && json.records.Station) || [];
@@ -836,12 +831,13 @@ async function fetchLiveRain(){
     }
     renderLiveOverlay();
   }catch(err){
-    console.error('氣象署 API 讀取失敗：', err);
+    console.error('讀取即時雨量快照失敗：', err);
     if(statusEl){
-      statusEl.innerHTML = '❌ 讀取失敗，可能是瀏覽器 CORS 限制、API 金鑰錯誤，或氣象署系統剛好維護中。<br>如果持續失敗，請跟 Claude 說「CORS 被擋了」，會改用方案B（手動更新快照資料）。';
+      statusEl.innerHTML = '❌ 讀取失敗，rain-live.json 可能還沒產生（請確認 GitHub Actions 是否已成功執行過一次）。';
     }
   }
 }
+
  
 document.getElementById('liveRainRefreshBtn') &&
   document.getElementById('liveRainRefreshBtn').addEventListener('click', fetchLiveRain);
