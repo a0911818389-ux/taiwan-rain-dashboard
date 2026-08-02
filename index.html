@@ -91,6 +91,7 @@
 <div class="viz-root" id="app">
   <div class="top-bar">
     <div>
+      
       <h1>臺灣雨量核心儀表板</h1>
       <p class="subtitle" id="framingText">載入中...</p>
     </div>
@@ -99,6 +100,27 @@
 
   <div class="stat-row" id="statRow"></div>
 
+  <div class="card">
+    <h2>即時雨量（氣象署開放資料）
+      <button class="theme-toggle" id="liveRainRefreshBtn" style="margin-left:10px;font-size:11px;padding:4px 10px;">重新整理</button>
+    </h2>
+    <p class="desc" id="liveRainStatus">尚未讀取即時資料。</p>
+    <div class="legend-row" id="liveRainList"></div>
+  </div>
+  <div class="card">
+    <h2>即時雨量（氣象署開放資料）
+      <button class="theme-toggle" id="liveRainRefreshBtn" style="margin-left:10px;font-size:11px;padding:4px 10px;">重新整理</button>
+    </h2>
+    <p class="desc" id="liveRainStatus">尚未讀取即時資料。</p>
+    <div class="legend-row" id="liveRainList"></div>
+  </div>
+  <div class="card">
+    <h2>即時雨量（氣象署開放資料）
+      <button class="theme-toggle" id="liveRainRefreshBtn" style="margin-left:10px;font-size:11px;padding:4px 10px;">重新整理</button>
+    </h2>
+    <p class="desc" id="liveRainStatus">尚未讀取即時資料。</p>
+    <div class="legend-row" id="liveRainList"></div>
+  </div>
   <div class="card">
     <h2>核心圖表：全台測站降雨趨勢（2018–2022）</h2>
     <p class="desc">左側地圖選擇測站（點的大小代表淹水通報點位多寡），右側顯示該測站逐年「年總雨量」與「單日最大降雨量」。所有延伸分析都以此為共同基礎。</p>
@@ -758,6 +780,92 @@ initTheme();
 renderLayerTimeline();
 renderTabBar();
 renderAll();
+ const CWA_API_KEY = 'CWA-C3121B3D-9761-40F3-B466-CF5AIE9C30FA'; // <-- 把這裡換成你自己申請到的 Authorization 金鑰
+let liveRain = {}; // { 測站名稱: { precipitation, obsTime } }
+ 
+function renderLiveOverlay(){
+  const mapDiv = document.getElementById('stationMap');
+  if(!mapDiv) return;
+  const old = document.getElementById('liveRainOverlaySvg');
+  if(old) old.remove();
+  const matched = Object.keys(liveRain).filter(name => DATA.stationCoords[name] && liveRain[name].precipitation > 0);
+  if(matched.length === 0) return;
+  mapDiv.style.position = 'relative';
+  const width = containerWidth('stationMap');
+  const height = width * 500/300;
+  const svg = svgEl('svg', {
+    width, height, viewBox:'0 0 300 500', id:'liveRainOverlaySvg',
+    style:'position:absolute;top:0;left:0;pointer-events:none;'
+  });
+  matched.forEach(name=>{
+    const {x,y} = DATA.stationCoords[name];
+    const info = liveRain[name];
+    const dot = svgEl('circle', {
+      cx:x, cy:y, r:5, fill:'var(--critical)',
+      stroke:'#fff', 'stroke-width':1.5,
+      style:'pointer-events:auto;cursor:pointer;'
+    });
+    const tt = ()=>`<b>${name}</b>（即時雨量）<br>今日累積：${info.precipitation.toFixed(1)} mm<br>觀測時間：${(info.obsTime||'').replace('T',' ').slice(0,16)}`;
+    dot.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    dot.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    dot.addEventListener('mouseleave', hideTooltip);
+    svg.appendChild(dot);
+  });
+  mapDiv.appendChild(svg);
+}
+ 
+async function fetchLiveRain(){
+  const statusEl = document.getElementById('liveRainStatus');
+  const listEl = document.getElementById('liveRainList');
+  if(!CWA_API_KEY || CWA_API_KEY.includes('請填入')){
+    if(statusEl) statusEl.textContent = '⚠️ 尚未設定氣象署 API 金鑰，請在程式碼中填入 CWA_API_KEY。';
+    return;
+  }
+  if(statusEl) statusEl.textContent = '讀取中...';
+  const url = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0002-001?Authorization=${CWA_API_KEY}&downloadType=WEB&format=JSON`;
+  try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const json = await res.json();
+    const stations = (json.records && json.records.Station) || [];
+    liveRain = {};
+    stations.forEach(s=>{
+      const name = s.StationName;
+      const rf = s.RainfallElement || {};
+      const now = rf.Now && parseFloat(rf.Now.Precipitation);
+      if(name && !isNaN(now) && now >= 0){
+        liveRain[name] = { precipitation: now, obsTime: (s.ObsTime && s.ObsTime.DateTime) || '' };
+      }
+    });
+    const matched = Object.keys(liveRain).filter(name => DATA.stationCoords[name]);
+    const updatedAt = new Date().toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'});
+    if(statusEl) statusEl.textContent = `✅ 已更新（${updatedAt}），共取得 ${stations.length} 個測站，其中 ${matched.length} 個與本儀表板測站對應。`;
+    if(listEl){
+      const top = matched
+        .map(name => ({name, mm: liveRain[name].precipitation}))
+        .sort((a,b)=>b.mm-a.mm)
+        .slice(0,8);
+      listEl.innerHTML = top.length
+        ? top.map(t=>`<div class="legend-item"><span class="legend-dot" style="background:var(--critical)"></span>${t.name}：${t.mm.toFixed(1)} mm</div>`).join('')
+        : '<div class="legend-item">目前無測站有累積雨量</div>';
+    }
+    renderLiveOverlay();
+  }catch(err){
+    console.error('氣象署 API 讀取失敗：', err);
+    if(statusEl){
+      statusEl.innerHTML = '❌ 讀取失敗，可能是瀏覽器 CORS 限制、API 金鑰錯誤，或氣象署系統剛好維護中。<br>如果持續失敗，請跟 Claude 說「CORS 被擋了」，會改用方案B（手動更新快照資料）。';
+    }
+  }
+}
+ 
+document.getElementById('liveRainRefreshBtn') &&
+  document.getElementById('liveRainRefreshBtn').addEventListener('click', fetchLiveRain);
+window.addEventListener('resize', renderLiveOverlay);
+ 
+fetchLiveRain();
+setInterval(fetchLiveRain, 10*60*1000); // 每10分鐘自動更新一次
+ 
+ 
 </script>
 </body>
 </html>
