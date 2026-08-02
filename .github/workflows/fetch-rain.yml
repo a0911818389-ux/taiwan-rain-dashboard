@@ -1,0 +1,42 @@
+
+1. 回到 repository 首頁，點 「Add file」→「Create new file」
+2. 在檔名欄位輸入（要完整輸入，包含資料夾路徑）：
+   .github/workflows/fetch-rain.yml
+ 
+   小提醒：打「/」的時候 GitHub 會自動幫你建立資料夾，這是正常的。
+ 
+3. 在下面的程式碼編輯區，貼上以下整段內容：
+ 
+name: Fetch Live Rain Data
+ 
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch: {}
+ 
+permissions:
+  contents: write
+ 
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+ 
+      - name: Fetch CWA rainfall data
+        env:
+          CWA_KEY: ${{ secrets.CWA_API_KEY }}
+        run: |
+          curl -s "https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0002-001?Authorization=${CWA_KEY}&downloadType=WEB&format=JSON" -o rain-live.json
+ 
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add rain-live.json
+          git diff --cached --quiet || git commit -m "自動更新即時雨量資料"
+          git push
+ 
+4. 往下捲動，點右上角綠色 「Commit changes...」→ 直接 commit 到 main
+ 
