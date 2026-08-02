@@ -2,8 +2,8 @@ name: Fetch Live Rain Data
 
 on:
   schedule:
-    - cron: '*/20 * * * *'  
-    workflow_dispatch: {}
+    - cron: '*/20 * * * *'
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -28,4 +28,3 @@ jobs:
           git add rain-live.json
           git diff --cached --quiet || git commit -m "自動更新即時雨量資料"
           git push
-          
