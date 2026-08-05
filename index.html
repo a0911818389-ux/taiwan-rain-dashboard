@@ -544,7 +544,6 @@ function renderVegPanel(panel){
     'vegChart', '',
    `t檢定顯示10種作物中，僅蕹菜、青江白菜、青蔥的價格變化達統計顯著(p<0.05)，其餘7種(含${s.most_stable_example.crop})證據不足，可能僅為市場正常波動，不宜逐一強調個別漲跌幅。`
   );
-  );
   const width = containerWidth('vegChart'); const height=340;
   const margin={top:16,right:20,bottom:70,left:52};
   const iw=width-margin.left-margin.right, ih=height-margin.top-margin.bottom;
@@ -851,3 +850,4 @@ setInterval(fetchLiveRain, 10*60*1000); // 每10分鐘自動更新一次
 </script>
 </body>
 </html>
+
