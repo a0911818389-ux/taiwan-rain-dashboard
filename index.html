@@ -779,7 +779,7 @@ function renderAll(){
 }
 
 window.addEventListener('resize', ()=>{ renderAll(); });
-
+let liveRain = {}; // { 測站名稱: { precipitation, obsTime } } —— 提前宣告，避免頁面剛載入時核心圖表出錯
 buildFraming();
 buildStats();
 initTheme();
@@ -787,7 +787,7 @@ renderLayerTimeline();
 renderTabBar();
 renderAll();
 
-let liveRain = {}; // { 測站名稱: { precipitation, obsTime } }
+// liveRain 已經在檔案前面提前宣告過了，這裡不用重複宣告
  
 function renderLiveOverlay(){
   const mapDiv = document.getElementById('stationMap');
