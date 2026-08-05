@@ -542,7 +542,7 @@ function renderVegPanel(panel){
     '颱風前後蔬菜均價變化',
     `以3次颱風事件(${s.typhoons.map(t=>t.name).join('、')})比對前後均價漲跌幅。最大單一漲幅：${s.biggest_mover.crop} +${s.biggest_mover.pct_change}%（${s.biggest_mover.typhoon}颱風）。`,
     'vegChart', '',
-    `菜價受供給地區、儲運狀況等多重因素影響，颱風僅為其中之一；${s.most_stable_example.crop}${s.most_stable_example.note}。`
+    ``t檢定顯示10種作物中，僅蕹菜、青江白菜、青蔥的價格變化達統計顯著(p<0.05)，其餘7種(含${s.most_stable_example.crop})證據不足，可能僅為市場正常波動，不宜逐一強調個別漲跌幅。`
   );
   const width = containerWidth('vegChart'); const height=340;
   const margin={top:16,right:20,bottom:70,left:52};
@@ -595,8 +595,7 @@ function renderTrafficPanel(panel){
     '降雨 vs 交通事故（雨天占比）',
     `2022–2025年，全部事故中約<strong>${s.overall_rain_share}%</strong>發生在雨天。5月梅雨季占比最高(${s.top_month.rain_share}%)，${s.top_county.county}是雨天占比最高的縣市(${s.top_county.rain_share}%)。`,
     'trafficChart', '',
-    `反直覺發現：雨天事故的死亡占比(${(s.class_compare.fatal_share_rain*100).toFixed(1)}%)略低於晴天(${(s.class_compare.fatal_share_nonrain*100).toFixed(1)}%)，推測駕駛在雨天會較為謹慎、降速。資料含天氣欄位僅2022–2025年，2013–2021年僅有總事故數。`
-  );
+   ``雨天事故的死亡占比(${(s.class_compare.fatal_share_rain*100).toFixed(1)}%)與晴天(${(s.class_compare.fatal_share_nonrain*100).toFixed(1)}%)接近，卡方檢定顯示此差異未達統計顯著(χ²=1.43, p=0.23)，無法證實下雨會影響死亡率，僅供參考。資料含天氣欄位僅2022–2025年，2013–2021年僅有總事故數。`
   const width = containerWidth('trafficChart'); const height=280;
   const margin={top:16,right:20,bottom:32,left:52};
   const iw=width-margin.left-margin.right, ih=height-margin.top-margin.bottom;
