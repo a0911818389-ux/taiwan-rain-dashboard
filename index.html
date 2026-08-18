@@ -7,7 +7,7 @@
 <style>
   :root {
     color-scheme: light;
-    --surface-1: #fcfcfb; --page-plane: #f9f9f7; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --surface-1: #fcfcfb; --surface-2: #e3e5df; --page-plane: #f9f9f7; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
     --gridline:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
     --series-1:#2a78d6; --series-2:#0ca35c; --series-3:#d03b3b; --series-4:#4a3aa7; --series-5:#c9832a;
     --good:#0ca30c; --warning:#fab219; --critical:#d03b3b;
@@ -17,7 +17,7 @@
   }
   html[data-theme="dark"] {
     color-scheme: dark;
-    --surface-1:#1a1a19; --page-plane:#0d0d0d; --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+    --surface-1:#1a1a19; --surface-2:#312f2b; --page-plane:#0d0d0d; --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
     --gridline:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
     --series-1:#3987e5; --series-2:#2fbf7a; --series-3:#e66767; --series-4:#9085e9; --series-5:#e0a44f;
     --tab-bg:#242422; --tab-active:#3987e5;
@@ -25,7 +25,7 @@
   }
   @media (prefers-color-scheme: dark) {
     html:not([data-theme="light"]) {
-      color-scheme: dark; --surface-1:#1a1a19; --page-plane:#0d0d0d; --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      color-scheme: dark; --surface-1:#1a1a19; --surface-2:#312f2b; --page-plane:#0d0d0d; --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
       --gridline:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
       --series-1:#3987e5; --series-2:#2fbf7a; --series-3:#e66767; --series-4:#9085e9; --series-5:#e0a44f;
       --tab-bg:#242422; --tab-active:#3987e5;
@@ -174,6 +174,15 @@ function seqColor(t){
   return `rgb(${r},${g},${b})`;
 }
 
+// 簡化版台灣本島輪廓（配合 stationCoords / countyCoords 的 0-300 x 0-500 座標系），
+// 讓下方各張「地圖」有實際的海岸線可以對照，而不是一群漂浮的點。
+const TAIWAN_OUTLINE = 'M272.27,149.58 L269.45,151.19 L266.83,154.90 L264.93,159.39 L263.69,161.42 L262.41,166.65 L261.98,172.29 L263.00,178.73 L263.25,180.04 L263.61,185.79 L265.32,190.93 L266.64,192.06 L265.85,199.28 L263.64,200.85 L263.53,203.33 L264.26,204.77 L262.14,207.38 L261.49,209.59 L260.11,213.27 L258.90,220.41 L258.93,223.57 L257.50,226.56 L256.84,229.54 L254.95,231.59 L251.84,235.69 L250.89,239.45 L251.25,243.59 L248.80,247.10 L247.95,249.78 L248.26,253.13 L249.86,256.35 L248.79,261.87 L247.92,261.46 L247.31,263.71 L247.18,268.36 L246.71,274.32 L245.67,278.44 L244.91,280.86 L244.91,285.45 L243.88,288.82 L243.30,290.41 L243.08,294.47 L242.36,297.74 L241.96,303.22 L240.66,308.17 L240.37,314.44 L239.86,318.73 L238.77,323.76 L238.12,326.44 L237.95,330.22 L237.63,332.50 L236.19,335.04 L234.83,339.80 L234.37,341.57 L234.34,344.19 L232.80,346.22 L232.87,348.98 L233.45,351.29 L232.91,354.29 L233.41,356.42 L231.74,358.69 L229.80,360.43 L229.40,361.88 L228.66,365.48 L227.96,367.58 L227.63,369.95 L225.64,374.29 L224.51,376.85 L223.45,379.44 L221.79,382.60 L219.64,384.41 L218.15,388.17 L219.08,391.85 L217.72,393.31 L216.65,396.81 L215.20,398.66 L212.14,401.90 L209.57,404.48 L207.84,405.76 L206.65,408.10 L205.74,414.78 L203.51,418.64 L202.27,424.10 L199.68,435.88 L198.76,440.22 L197.80,442.93 L197.59,449.27 L198.08,454.56 L197.90,457.48 L197.75,460.90 L197.91,464.42 L197.29,466.43 L198.29,468.35 L197.71,474.52 L197.41,477.16 L196.64,478.83 L195.48,481.04 L194.15,485.56 L195.56,489.15 L195.87,490.80 L194.76,491.50 L194.41,489.58 L192.75,487.29 L190.96,486.43 L188.74,484.54 L187.61,485.60 L187.02,488.18 L186.25,489.05 L185.05,484.00 L185.19,482.16 L183.81,479.72 L183.34,476.37 L184.07,473.91 L184.65,472.16 L185.42,469.67 L184.87,466.41 L184.20,463.37 L183.12,458.03 L182.30,454.85 L181.31,453.09 L180.91,450.28 L180.25,446.58 L177.64,442.03 L176.27,439.05 L170.92,434.32 L165.87,429.06 L165.06,428.04 L161.50,425.53 L158.75,422.19 L157.27,422.91 L156.94,420.63 L157.92,421.47 L156.33,419.31 L153.88,413.26 L153.35,411.50 L152.91,407.84 L153.93,405.13 L153.36,400.48 L149.29,390.71 L149.85,389.07 L148.91,384.91 L147.68,378.93 L147.71,376.56 L146.56,371.92 L143.18,367.04 L139.83,364.23 L138.23,361.58 L137.46,360.79 L138.58,355.92 L139.57,351.95 L140.91,346.92 L141.13,342.80 L142.01,339.72 L143.22,334.75 L143.24,332.36 L144.43,328.86 L146.49,326.39 L146.65,324.14 L145.92,322.28 L145.94,320.18 L145.57,318.19 L146.35,315.50 L144.80,315.05 L143.82,314.24 L144.36,311.49 L145.66,311.42 L145.21,308.21 L145.36,303.51 L144.10,300.22 L144.13,297.87 L145.19,293.32 L145.73,290.83 L147.04,286.93 L146.43,282.21 L148.84,278.47 L149.78,275.14 L150.84,273.16 L151.87,271.05 L153.44,269.49 L153.66,267.24 L154.95,265.56 L155.26,263.24 L156.98,259.78 L158.75,256.81 L159.30,251.69 L160.49,250.11 L162.23,248.64 L163.11,245.34 L164.37,240.89 L165.60,237.68 L167.26,235.40 L168.64,233.50 L170.16,229.12 L171.45,225.29 L172.53,222.86 L173.47,221.26 L174.55,218.53 L177.16,213.19 L179.41,208.78 L182.64,201.37 L183.73,197.57 L184.87,192.90 L186.28,190.71 L187.38,189.50 L188.20,187.31 L190.35,184.49 L195.06,180.57 L196.33,176.59 L197.55,170.66 L199.20,165.20 L199.86,163.69 L201.34,161.05 L202.20,158.37 L203.80,154.27 L204.95,152.21 L205.78,148.84 L206.45,146.70 L208.67,142.80 L211.08,141.36 L213.76,139.12 L217.22,137.25 L219.81,135.45 L221.72,134.82 L224.77,134.58 L225.97,133.78 L229.65,133.06 L232.18,131.28 L232.30,129.05 L234.20,128.00 L233.22,126.62 L234.20,125.58 L235.38,123.61 L237.23,119.73 L238.51,117.65 L241.64,115.97 L242.19,114.75 L244.03,115.32 L245.25,114.55 L247.34,116.50 L249.18,118.87 L250.29,122.99 L251.84,125.28 L253.33,125.33 L253.24,127.72 L254.43,128.12 L255.40,129.39 L258.32,129.58 L260.25,131.42 L260.95,132.61 L262.23,132.63 L263.63,133.42 L266.10,133.85 L267.99,133.93 L269.51,135.73 L268.68,137.76 L269.45,139.73 L269.68,143.17 L270.95,145.37 L274.57,145.55 L274.88,147.49 L273.51,148.76 L272.27,149.58 Z M240.22,470.69 L240.83,471.18 L243.52,470.93 L244.07,471.19 L244.53,470.76 L244.84,472.92 L244.34,474.11 L244.64,475.57 L245.38,476.50 L246.62,477.29 L247.07,478.05 L246.38,479.90 L244.76,479.66 L244.23,478.18 L243.30,477.25 L242.59,477.39 L240.66,474.60 L240.51,472.32 L239.85,471.17 L240.22,470.69 Z M141.15,311.06 L141.83,311.49 L142.02,312.55 L141.32,312.41 L140.29,313.48 L139.73,315.98 L139.24,315.57 L138.66,316.24 L137.58,315.98 L137.10,316.94 L137.22,318.13 L135.82,318.11 L135.29,317.51 L135.54,316.72 L136.63,315.46 L138.15,314.08 L139.95,312.07 L141.15,311.06 Z M239.30,405.02 L240.58,405.06 L240.50,407.63 L239.85,408.53 L240.21,409.37 L239.56,410.00 L238.91,408.73 L238.04,408.45 L238.17,407.10 L237.47,405.79 L237.50,405.14 L238.49,405.40 L239.30,405.02 Z M161.94,440.53 L162.60,441.25 L162.46,442.11 L160.57,444.27 L160.14,443.46 L160.80,442.29 L160.64,441.64 L161.10,440.95 L161.94,440.53 Z M377.36,64.56 L378.10,64.82 L378.23,65.85 L377.39,65.73 L376.51,66.43 L376.18,65.40 L377.36,64.56 Z M271.84,164.90 L272.21,165.55 L271.02,165.96 L270.47,165.60 L270.98,164.19 L271.84,164.90 Z M142.42,309.12 L143.21,310.34 L142.97,310.68 L141.85,310.27 L142.42,309.12 Z';
+function drawTaiwanOutline(svg){
+  svg.appendChild(svgEl('path',{
+    d: TAIWAN_OUTLINE, fill:'var(--surface-2)', stroke:'var(--text-muted)', 'stroke-width':1.4, opacity:1
+  }));
+}
+
 let currentStation = DATA.floodSummary.top_station.station;
 let currentTab = 'flood';
 let currentReservoir = '石門水庫';
@@ -265,6 +274,7 @@ function renderMap(){
   const height = width * 500/300;
   const svg = svgEl('svg',{width, height, viewBox:`0 0 300 500`});
   document.getElementById('stationMap').appendChild(svg);
+  drawTaiwanOutline(svg);
   const totals = stationTotals();
   const floodVals = Object.values(totals).map(v=>v.flood);
   const [,fMax] = extent(floodVals.map(v=>({v})), d=>d.v);
@@ -457,6 +467,13 @@ function renderPM25Panel(panel){
   g.appendChild(svgEl('path',{d:pathD,fill:'none',stroke:'var(--series-3)','stroke-width':2}));
   const tickEvery = Math.ceil(rows.length/8);
   rows.forEach((r,i)=>{ if(i%tickEvery===0) g.appendChild(Object.assign(svgEl('text',{x:x(r.label)+x.bandwidth()/2,y:ih+16,'text-anchor':'middle','font-size':9,fill:'var(--text-secondary)'}),{textContent:r.label})); });
+  // 左軸：雨量(mm，長條)；右軸：PM2.5(折線) —— 補上原本缺少的座標軸數字
+  [0,0.5,1].forEach(f=>g.appendChild(Object.assign(svgEl('text',{x:-8,y:ih-f*ih+4,'text-anchor':'end','font-size':10,fill:'var(--text-secondary)'}),{textContent:fmt(rainMax*1.15*f,0)})));
+  [0,0.5,1].forEach(f=>g.appendChild(Object.assign(svgEl('text',{x:iw+8,y:ih-f*ih+4,'text-anchor':'start','font-size':10,fill:'var(--series-3)'}),{textContent:fmt(pmMax*1.2*f,0)})));
+  const legendDiv = document.createElement('div');
+  legendDiv.className = 'legend-row';
+  legendDiv.innerHTML = `<div class="legend-item"><span class="legend-dot" style="background:var(--series-1)"></span>月雨量 mm（左軸，長條）</div><div class="legend-item"><span class="legend-line" style="background:var(--series-3)"></span>PM2.5 月均濃度（右軸，折線）</div>`;
+  panel.querySelector('#pm25Chart').appendChild(legendDiv);
 }
 
 // ---- Agriculture ----
@@ -539,6 +556,7 @@ function renderDenguePanel(panel){
   const mh = mw * 500/300;
   const msvg = svgEl('svg',{width:mw, height:mh, viewBox:'0 0 300 500'});
   mapWrap.querySelector('#dengueCountyMap').appendChild(msvg);
+  drawTaiwanOutline(msvg);
   countyRows.forEach(r=>{
     const coord = DATA.countyCoords[r.county];
     if(!coord) return;
@@ -652,6 +670,7 @@ function renderTrafficPanel(panel){
   const mh = mw * 500/300;
   const msvg = svgEl('svg',{width:mw, height:mh, viewBox:'0 0 300 500'});
   mapWrap.querySelector('#trafficCountyMap').appendChild(msvg);
+  drawTaiwanOutline(msvg);
   countyRows.forEach(r=>{
     const coord = DATA.countyCoords[r.county];
     if(!coord) return;
@@ -872,4 +891,3 @@ setInterval(fetchLiveRain, 10*60*1000); // 每10分鐘自動更新一次
 </script>
 </body>
 </html>
-
