@@ -1,91 +1,893 @@
-臺灣雨量核心儀表板
-以全台 33 個氣象測站的降雨資料為核心，依「即時反應→短延遲→中延遲→累積效應」四層時間軸，疊加交通、空氣品質、水庫、農損、疫情、菜價共七個維度，取代過去各自獨立的分析圖表。
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>臺灣雨量核心儀表板：七個面向的時間層次分析</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb; --surface-2: #e3e5df; --page-plane: #f9f9f7; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --gridline:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --series-1:#2a78d6; --series-2:#0ca35c; --series-3:#d03b3b; --series-4:#4a3aa7; --series-5:#c9832a;
+    --good:#0ca30c; --warning:#fab219; --critical:#d03b3b;
+    
+    --tab-bg:#eeede7; --tab-active:#2a78d6;
+    --layer-immediate:#2a78d6; --layer-short:#0ca35c; --layer-medium:#c9832a; --layer-cumulative:#4a3aa7;
+  }
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:#1a1a19; --surface-2:#312f2b; --page-plane:#0d0d0d; --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+    --gridline:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+    --series-1:#3987e5; --series-2:#2fbf7a; --series-3:#e66767; --series-4:#9085e9; --series-5:#e0a44f;
+    --tab-bg:#242422; --tab-active:#3987e5;
+    --layer-immediate:#3987e5; --layer-short:#2fbf7a; --layer-medium:#e0a44f; --layer-cumulative:#9085e9;
+  }
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) {
+      color-scheme: dark; --surface-1:#1a1a19; --surface-2:#312f2b; --page-plane:#0d0d0d; --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --gridline:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --series-1:#3987e5; --series-2:#2fbf7a; --series-3:#e66767; --series-4:#9085e9; --series-5:#e0a44f;
+      --tab-bg:#242422; --tab-active:#3987e5;
+      --layer-immediate:#3987e5; --layer-short:#2fbf7a; --layer-medium:#e0a44f; --layer-cumulative:#9085e9;
+    }
+  }
+  * { box-sizing: border-box; } html,body{margin:0;padding:0;}
+  body { background:var(--page-plane); font-family: system-ui,-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif; color:var(--text-primary);}
+  svg { display:block; overflow:visible; font-family:inherit; }
+  .viz-root { max-width:1180px; margin:0 auto; padding:28px 20px 80px; }
+  .top-bar { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:8px;}
+  h1 { font-size:22px; margin:0 0 6px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .subtitle { color:var(--text-secondary); font-size:14px; margin:0 0 18px; max-width:840px; line-height:1.6;}
+  .theme-toggle { border:1px solid var(--border); background:var(--surface-1); color:var(--text-secondary); font-size:12px; padding:6px 12px; border-radius:6px; cursor:pointer; white-space:nowrap;}
+  .card { background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:18px;}
+  .card .desc { color:var(--text-secondary); font-size:12.5px; margin:0 0 14px; line-height:1.6; max-width:840px;}
+  .prose { color:var(--text-secondary); font-size:13px; line-height:1.85; }
+  .prose strong { color:var(--text-primary); }
+  .stat-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px;}
+  .stat-tile { background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+  .stat-tile .label { font-size:11.5px; color:var(--text-secondary); margin-bottom:6px; }
+  .stat-tile .value { font-size:22px; font-weight:600; }
+  .stat-tile .note { font-size:11px; color:var(--text-muted); margin-top:4px; }
+  .core-grid { display:grid; grid-template-columns: 300px 1fr; gap:18px; }
+  @media (max-width: 760px) { .core-grid { grid-template-columns: 1fr; } }
+  .station-pill { display:inline-flex; align-items:center; gap:6px; background:var(--tab-bg); border-radius:999px; padding:4px 12px; font-size:12.5px; margin-bottom:10px; }
+  .station-pill b { color: var(--series-1); }
 
-切換深色模式
-比對氣象測站數
-33
-署屬有人站
-單日最大降雨相關係數
-0.261
-與淹水點位，弱到中度正相關
-PM2.5相關係數
--0.574
-降雨越多，PM2.5越低
-水庫蓄水最佳延遲
-5 天
-石門水庫，r=0.29
-登革熱季節集中度
-78.7%
-集中在9-11月
-即時雨量（氣象署開放資料） 重新整理
-❌ 讀取失敗，rain-live.json 可能還沒產生（請確認 GitHub Actions 是否已成功執行過一次）。
+  .layer-timeline { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  @media (max-width:820px) { .layer-timeline { grid-template-columns:1fr 1fr; } }
+  .layer-tile { border:1px solid var(--border); border-left-width:3px; border-radius:10px; padding:12px 14px; background:var(--surface-1); }
+  .layer-tile .layer-label { font-size:12.5px; font-weight:700; margin-bottom:1px; }
+  .layer-tile .layer-sub { font-size:10.5px; color:var(--text-muted); margin-bottom:6px; }
+  .layer-tile .layer-desc { font-size:11px; color:var(--text-secondary); line-height:1.5; }
 
-核心圖表：全台測站降雨趨勢（2018–2022）
-左側地圖選擇測站（點的大小代表淹水通報點位多寡），右側顯示該測站逐年「年總雨量」與「單日最大降雨量」，並疊加該測站今日即時雨量與歷史紀錄的排名比較（紅色虛線標示）。所有延伸分析都以此為共同基礎。注意：今日即時雨量為截至目前的累積值，當天尚未結束，比較僅供參考。
+  .layer-group { margin-bottom:14px; }
+  .layer-group-head { display:flex; align-items:baseline; gap:8px; margin-bottom:8px; }
+  .layer-group-head .dot { width:8px; height:8px; border-radius:50%; }
+  .layer-group-head .name { font-size:12.5px; font-weight:700; }
+  .layer-group-head .sub { font-size:11px; color:var(--text-muted); }
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; }
+  .tab-btn { border:1px solid var(--border); background:var(--tab-bg); color:var(--text-secondary); font-size:12.5px; padding:7px 14px; border-radius:999px; cursor:pointer; transition: all .15s; }
+  .tab-btn.active { background:var(--tab-active); color:#fff; border-color:var(--tab-active); }
 
-北部（平均2,725mm/年）
-中部（平均1,748mm/年）
-南部（平均2,157mm/年）
-東部（平均2,414mm/年）
-離島（平均914mm/年）
-點的大小＝淹水通報點位多寡；顏色＝地理分區
-目前檢視：
-高雄
-2018
-2019
-2020
-2021
-2022
-0
-1,764
-3,528
-年總雨量 (mm，長條)
-單日最大降雨 (mm，折線)
-今日即時雨量（若該測站有資料，虛線標示）
-降雨影響的時間層次
-七個疊加維度，依「降雨後多久才顯現影響」排成一條時間軸——這也是選擇下方分頁時的分組依據。
+  .legend-row { display:flex; gap:16px; flex-wrap:wrap; font-size:11.5px; color:var(--text-secondary); margin-top:8px; }
+  .legend-item { display:flex; align-items:center; gap:5px; }
+  .legend-dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .legend-line { width:14px; height:3px; display:inline-block; border-radius:2px; }
+  #tooltip { position:absolute; display:none; background:var(--text-primary); color:var(--page-plane); font-size:12px; padding:8px 10px; border-radius:8px; max-width:240px; line-height:1.5; pointer-events:none; z-index:50; box-shadow:0 6px 18px rgba(0,0,0,0.25); }
+  html[data-theme="dark"] #tooltip { background:#eee; color:#111; }
+  .station-dot { cursor:pointer; transition: r .1s; }
+  .caveat { font-size:11.5px; color:var(--text-muted); border-top:1px dashed var(--border); margin-top:12px; padding-top:10px; line-height:1.7; }
+  table.mini { width:100%; border-collapse:collapse; font-size:12px; margin-top:8px; }
+  table.mini th, table.mini td { text-align:left; padding:5px 8px; border-bottom:1px solid var(--border); color:var(--text-secondary); }
+  table.mini th { color:var(--text-muted); font-weight:500; }
+  .pill-select { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .pill-select button { border:1px solid var(--border); background:var(--tab-bg); color:var(--text-secondary); font-size:11.5px; padding:5px 11px; border-radius:999px; cursor:pointer; }
+  .pill-select button.active { background:var(--series-2); color:#fff; border-color:var(--series-2); }
+</style>
+</head>
+<body>
+<div class="viz-root" id="app">
+  <div class="top-bar">
+    <div>
+      
+      <h1>臺灣雨量核心儀表板</h1>
+      <p class="subtitle" id="framingText">載入中...</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle">切換深色模式</button>
+  </div>
 
-即時反應
-當天～數天內
-降雨發生的當下或幾天內就能觀察到的影響
-短延遲反應
-數天內
-需要幾天時間累積、傳導才會顯現的影響
-中延遲反應
-2-3個月
-透過生態或生物過程，延後數月才爆發的影響
-累積效應
-全年/多年
-長期累積、以年為單位才看得出全貌的影響
-疊加維度：降雨如何牽動台灣社會？
-切換以下分頁，觀察降雨與不同社會/環境面向的關聯；每個分頁都誠實標示相關強度與資料限制。
+  <div class="stat-row" id="statRow"></div>
+  <div class="card">
+    <h2>即時雨量（氣象署開放資料）
+      <button class="theme-toggle" id="liveRainRefreshBtn" style="margin-left:10px;font-size:11px;padding:4px 10px;">重新整理</button>
+    </h2>
+    <p class="desc" id="liveRainStatus">尚未讀取即時資料。</p>
+    <div class="legend-row" id="liveRainList"></div>
+  </div>
+  <div class="card">
+    <h2>核心圖表：全台測站降雨趨勢（2018–2022）</h2>
+    <p class="desc">左側地圖選擇測站（點的大小代表淹水通報點位多寡），右側顯示該測站逐年「年總雨量」與「單日最大降雨量」，並疊加該測站今日即時雨量與歷史紀錄的排名比較（紅色虛線標示）。所有延伸分析都以此為共同基礎。注意：今日即時雨量為截至目前的累積值，當天尚未結束，比較僅供參考。</p>
+    <div class="core-grid">
+      <div>
+        <div id="stationMap"></div>
+        <div class="legend-row" id="mapRegionLegend"></div>
+        <div class="legend-row">
+          <div class="legend-item"><span class="legend-dot" style="background:var(--text-muted)"></span>點的大小＝淹水通報點位多寡；顏色＝地理分區</div>
+        </div>
+      </div>
+      <div>
+        <div class="station-pill">目前檢視：<b id="currentStationLabel">高雄</b></div>
+        <div id="coreChart"></div>
+        <div class="legend-row">
+          <div class="legend-item"><span class="legend-dot" style="background:var(--series-1)"></span>年總雨量 (mm，長條)</div>
+          <div class="legend-item"><span class="legend-line" style="background:var(--series-3)"></span>單日最大降雨 (mm，折線)</div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--critical)"></span>今日即時雨量（若該測站有資料，虛線標示）</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-即時反應
-當天～數天內
-空氣品質 PM2.5
-交通事故
-排水淹水
-短延遲反應
-數天內
-水庫蓄水
-颱風菜價
-中延遲反應
-2-3個月
-登革熱疫情
-累積效應
-全年/多年
-農業損失
-單日最大降雨 vs 淹水通報點位　相關係數 r=0.261（弱到中度正相關）。年總雨量與淹水幾乎無關(r=0.042)，故此分頁只保留有分析價值的「單日最大降雨」角度。
+  <div class="card">
+    <h2>降雨影響的時間層次</h2>
+    <p class="desc">七個疊加維度，依「降雨後多久才顯現影響」排成一條時間軸——這也是選擇下方分頁時的分組依據。</p>
+    <div class="layer-timeline" id="layerTimeline"></div>
+  </div>
 
-0
-0
-305
-287
-609
-573
-單日最大降雨 (mm)　→
-淹水資料僅有年份、以最近測站配對，粒度較粗；都會區通報密度也受人口影響，非純物理淹水頻率。
-方法與限制
-核心雨量資料來自中央氣象署 CODiS，33個署屬有人測站，2018–2022年逐年雨量。淹水資料來自國科會「近5年淹水災點」，以座標指派最近測站彙整。PM2.5取自環境部空氣品質測站月均值。交通事故取自警政署A1/A2事故統計，2013–2025年（含天氣欄位為2022–2025）。水庫蓄水取自經濟部水利署8座水庫2014–2025逐月雨量與蓄水率。登革熱取自疾管署NIDSS 1998–2024逐月病例。農業災損取自農業部1994–2024逐事件損失統計。菜價取自農產品交易行情站，2024–2026逐日交易均價，比對3次颱風事件前後價格。
+  <div class="card">
+    <h2>疊加維度：降雨如何牽動台灣社會？</h2>
+    <p class="desc">切換以下分頁，觀察降雨與不同社會/環境面向的關聯；每個分頁都誠實標示相關強度與資料限制。</p>
+    <div id="tabBar"></div>
+    <div id="overlayPanel" style="margin-top:14px;"></div>
+  </div>
 
-本儀表板延續單一核心圖表（雨量趨勢）逐步疊加不同維度分析，取代過去各主題各自獨立儀表板的做法；已依相關強度篩選，僅保留具分析價值的角度（例如淹水分析僅保留「單日最大降雨」而非幾乎無關的「年總雨量」）。七個維度依「即時反應→短延遲→中延遲→累積效應」的時間層次分組，呈現同一場降雨如何在不同時間點觸發不同的社會反應。
+  <div class="card">
+    <h2>方法與限制</h2>
+    <div class="prose">
+      <p><strong>核心雨量資料</strong>來自中央氣象署 CODiS，33個署屬有人測站，2018–2022年逐年雨量。<strong>淹水資料</strong>來自國科會「近5年淹水災點」，以座標指派最近測站彙整。<strong>PM2.5</strong>取自環境部空氣品質測站月均值。<strong>交通事故</strong>取自警政署A1/A2事故統計，2013–2025年（含天氣欄位為2022–2025）。<strong>水庫蓄水</strong>取自經濟部水利署8座水庫2014–2025逐月雨量與蓄水率。<strong>登革熱</strong>取自疾管署NIDSS 1998–2024逐月病例。<strong>農業災損</strong>取自農業部1994–2024逐事件損失統計。<strong>菜價</strong>取自農產品交易行情站，2024–2026逐日交易均價，比對3次颱風事件前後價格。</p>
+      <p>本儀表板延續單一核心圖表（雨量趨勢）逐步疊加不同維度分析，取代過去各主題各自獨立儀表板的做法；已依相關強度篩選，僅保留具分析價值的角度（例如淹水分析僅保留「單日最大降雨」而非幾乎無關的「年總雨量」）。七個維度依「即時反應→短延遲→中延遲→累積效應」的時間層次分組，呈現同一場降雨如何在不同時間點觸發不同的社會反應。</p>
+    </div>
+  </div>
+</div>
+<div id="tooltip"></div>
+
+<script>
+const DATA = {"core":[{"station":"板橋","year":2018,"max_daily_rain":92.0,"total_rain":1517.7,"flood_count":6},{"station":"板橋","year":2019,"max_daily_rain":121.5,"total_rain":2370.6,"flood_count":124},{"station":"板橋","year":2020,"max_daily_rain":132.5,"total_rain":1984.1,"flood_count":5},{"station":"板橋","year":2021,"max_daily_rain":157.5,"total_rain":1983.0,"flood_count":46},{"station":"板橋","year":2022,"max_daily_rain":214.5,"total_rain":2628.5,"flood_count":20},{"station":"淡水","year":2018,"max_daily_rain":183.5,"total_rain":1711.5,"flood_count":5},{"station":"淡水","year":2019,"max_daily_rain":222.5,"total_rain":2717.0,"flood_count":63},{"station":"淡水","year":2020,"max_daily_rain":166.0,"total_rain":1410.5,"flood_count":11},{"station":"淡水","year":2021,"max_daily_rain":137.0,"total_rain":1598.5,"flood_count":5},{"station":"淡水","year":2022,"max_daily_rain":188.5,"total_rain":2565.5,"flood_count":11},{"station":"鞍部","year":2018,"max_daily_rain":334.0,"total_rain":4459.2,"flood_count":0},{"station":"鞍部","year":2019,"max_daily_rain":245.0,"total_rain":5051.3,"flood_count":14},{"station":"鞍部","year":2020,"max_daily_rain":189.0,"total_rain":5053.3,"flood_count":0},{"station":"鞍部","year":2021,"max_daily_rain":198.5,"total_rain":3822.5,"flood_count":0},{"station":"鞍部","year":2022,"max_daily_rain":324.5,"total_rain":7233.5,"flood_count":1},{"station":"臺北","year":2018,"max_daily_rain":144.5,"total_rain":1621.0,"flood_count":196},{"station":"臺北","year":2019,"max_daily_rain":120.7,"total_rain":2369.6,"flood_count":278},{"station":"臺北","year":2020,"max_daily_rain":120.0,"total_rain":1702.8,"flood_count":29},{"station":"臺北","year":2021,"max_daily_rain":156.0,"total_rain":1908.5,"flood_count":523},{"station":"臺北","year":2022,"max_daily_rain":257.0,"total_rain":2656.5,"flood_count":160},{"station":"竹子湖","year":2018,"max_daily_rain":315.7,"total_rain":4046.1,"flood_count":10},{"station":"竹子湖","year":2019,"max_daily_rain":283.0,"total_rain":4819.5,"flood_count":34},{"station":"竹子湖","year":2020,"max_daily_rain":218.5,"total_rain":4712.6,"flood_count":20},{"station":"竹子湖","year":2021,"max_daily_rain":265.0,"total_rain":3519.5,"flood_count":8},{"station":"竹子湖","year":2022,"max_daily_rain":456.5,"total_rain":6755.5,"flood_count":4},{"station":"基隆","year":2018,"max_daily_rain":200.0,"total_rain":3405.7,"flood_count":35},{"station":"基隆","year":2019,"max_daily_rain":115.5,"total_rain":3517.5,"flood_count":1},{"station":"基隆","year":2020,"max_daily_rain":184.0,"total_rain":3895.0,"flood_count":23},{"station":"基隆","year":2021,"max_daily_rain":108.0,"total_rain":3051.5,"flood_count":2},{"station":"基隆","year":2022,"max_daily_rain":274.0,"total_rain":5568.5,"flood_count":32},{"station":"彭佳嶼","year":2018,"max_daily_rain":163.5,"total_rain":1391.4,"flood_count":0},{"station":"彭佳嶼","year":2019,"max_daily_rain":60.0,"total_rain":1470.8,"flood_count":0},{"station":"彭佳嶼","year":2020,"max_daily_rain":132.5,"total_rain":1369.1,"flood_count":0},{"station":"彭佳嶼","year":2021,"max_daily_rain":139.0,"total_rain":1557.5,"flood_count":0},{"station":"彭佳嶼","year":2022,"max_daily_rain":189.5,"total_rain":2172.0,"flood_count":0},{"station":"花蓮","year":2018,"max_daily_rain":85.5,"total_rain":1388.2,"flood_count":0},{"station":"花蓮","year":2019,"max_daily_rain":152.0,"total_rain":1655.0,"flood_count":2},{"station":"花蓮","year":2020,"max_daily_rain":69.5,"total_rain":1272.9,"flood_count":0},{"station":"花蓮","year":2021,"max_daily_rain":172.5,"total_rain":1549.0,"flood_count":23},{"station":"花蓮","year":2022,"max_daily_rain":155.0,"total_rain":1922.5,"flood_count":9},{"station":"新屋","year":2018,"max_daily_rain":109.7,"total_rain":1137.0,"flood_count":26},{"station":"新屋","year":2019,"max_daily_rain":329.9,"total_rain":2096.1,"flood_count":96},{"station":"新屋","year":2020,"max_daily_rain":106.0,"total_rain":1190.6,"flood_count":1},{"station":"新屋","year":2021,"max_daily_rain":139.5,"total_rain":1187.5,"flood_count":29},{"station":"新屋","year":2022,"max_daily_rain":127.0,"total_rain":1856.5,"flood_count":14},{"station":"蘇澳","year":2018,"max_daily_rain":250.0,"total_rain":5006.2,"flood_count":0},{"station":"蘇澳","year":2019,"max_daily_rain":531.0,"total_rain":4391.0,"flood_count":4},{"station":"蘇澳","year":2020,"max_daily_rain":276.0,"total_rain":5431.5,"flood_count":0},{"station":"蘇澳","year":2021,"max_daily_rain":134.0,"total_rain":3233.0,"flood_count":0},{"station":"蘇澳","year":2022,"max_daily_rain":216.0,"total_rain":6561.0,"flood_count":3},{"station":"宜蘭","year":2018,"max_daily_rain":175.5,"total_rain":2505.5,"flood_count":0},{"station":"宜蘭","year":2019,"max_daily_rain":149.5,"total_rain":2684.6,"flood_count":1},{"station":"宜蘭","year":2020,"max_daily_rain":174.5,"total_rain":2809.1,"flood_count":0},{"station":"宜蘭","year":2021,"max_daily_rain":147.0,"total_rain":2018.0,"flood_count":4},{"station":"宜蘭","year":2022,"max_daily_rain":127.0,"total_rain":3617.0,"flood_count":13},{"station":"金門","year":2018,"max_daily_rain":205.5,"total_rain":878.3,"flood_count":0},{"station":"金門","year":2019,"max_daily_rain":77.0,"total_rain":905.3,"flood_count":0},{"station":"金門","year":2020,"max_daily_rain":40.0,"total_rain":476.5,"flood_count":0},{"station":"金門","year":2021,"max_daily_rain":48.0,"total_rain":462.2,"flood_count":0},{"station":"金門","year":2022,"max_daily_rain":78.5,"total_rain":987.7,"flood_count":0},{"station":"田中","year":2020,"max_daily_rain":125.0,"total_rain":888.1,"flood_count":18},{"station":"田中","year":2021,"max_daily_rain":178.0,"total_rain":1739.0,"flood_count":87},{"station":"田中","year":2022,"max_daily_rain":71.5,"total_rain":1193.5,"flood_count":9},{"station":"東吉島","year":2018,"max_daily_rain":393.8,"total_rain":1596.4,"flood_count":0},{"station":"東吉島","year":2019,"max_daily_rain":130.6,"total_rain":1135.0,"flood_count":0},{"station":"東吉島","year":2020,"max_daily_rain":200.5,"total_rain":880.6,"flood_count":0},{"station":"東吉島","year":2021,"max_daily_rain":156.5,"total_rain":737.7,"flood_count":0},{"station":"東吉島","year":2022,"max_daily_rain":74.0,"total_rain":818.0,"flood_count":0},{"station":"澎湖","year":2018,"max_daily_rain":216.2,"total_rain":958.9,"flood_count":0},{"station":"澎湖","year":2019,"max_daily_rain":92.7,"total_rain":915.7,"flood_count":0},{"station":"澎湖","year":2020,"max_daily_rain":79.0,"total_rain":710.6,"flood_count":0},{"station":"澎湖","year":2021,"max_daily_rain":124.0,"total_rain":788.0,"flood_count":0},{"station":"澎湖","year":2022,"max_daily_rain":114.5,"total_rain":921.5,"flood_count":0},{"station":"臺南","year":2018,"max_daily_rain":373.0,"total_rain":2449.9,"flood_count":260},{"station":"臺南","year":2019,"max_daily_rain":221.5,"total_rain":2167.4,"flood_count":132},{"station":"臺南","year":2020,"max_daily_rain":222.0,"total_rain":1530.3,"flood_count":101},{"station":"臺南","year":2021,"max_daily_rain":182.0,"total_rain":2241.5,"flood_count":137},{"station":"臺南","year":2022,"max_daily_rain":95.0,"total_rain":1001.0,"flood_count":1},{"station":"永康","year":2018,"max_daily_rain":334.5,"total_rain":2161.0,"flood_count":499},{"station":"永康","year":2019,"max_daily_rain":280.0,"total_rain":2184.2,"flood_count":66},{"station":"永康","year":2020,"max_daily_rain":266.0,"total_rain":1607.0,"flood_count":10},{"station":"永康","year":2021,"max_daily_rain":195.5,"total_rain":2060.5,"flood_count":154},{"station":"永康","year":2022,"max_daily_rain":123.5,"total_rain":1470.0,"flood_count":2},{"station":"高雄","year":2018,"max_daily_rain":314.5,"total_rain":3068.2,"flood_count":554},{"station":"高雄","year":2019,"max_daily_rain":130.5,"total_rain":2226.0,"flood_count":276},{"station":"高雄","year":2020,"max_daily_rain":295.0,"total_rain":2162.5,"flood_count":207},{"station":"高雄","year":2021,"max_daily_rain":264.0,"total_rain":2600.4,"flood_count":410},{"station":"高雄","year":2022,"max_daily_rain":94.5,"total_rain":935.7,"flood_count":0},{"station":"嘉義","year":2018,"max_daily_rain":417.0,"total_rain":1976.1,"flood_count":306},{"station":"嘉義","year":2019,"max_daily_rain":111.5,"total_rain":1977.8,"flood_count":35},{"station":"嘉義","year":2020,"max_daily_rain":71.5,"total_rain":982.8,"flood_count":39},{"station":"嘉義","year":2021,"max_daily_rain":230.0,"total_rain":2081.5,"flood_count":229},{"station":"嘉義","year":2022,"max_daily_rain":140.5,"total_rain":1482.7,"flood_count":36},{"station":"臺中","year":2018,"max_daily_rain":70.5,"total_rain":1297.0,"flood_count":1},{"station":"臺中","year":2019,"max_daily_rain":175.5,"total_rain":2508.0,"flood_count":19},{"station":"臺中","year":2020,"max_daily_rain":99.0,"total_rain":1110.2,"flood_count":2},{"station":"臺中","year":2021,"max_daily_rain":204.5,"total_rain":1969.0,"flood_count":39},{"station":"臺中","year":2022,"max_daily_rain":168.0,"total_rain":1558.0,"flood_count":33},{"station":"阿里山","year":2018,"max_daily_rain":259.5,"total_rain":3453.4,"flood_count":1},{"station":"阿里山","year":2019,"max_daily_rain":422.5,"total_rain":4125.6,"flood_count":0},{"station":"阿里山","year":2020,"max_daily_rain":260.5,"total_rain":2328.7,"flood_count":0},{"station":"阿里山","year":2021,"max_daily_rain":488.5,"total_rain":3605.0,"flood_count":1},{"station":"阿里山","year":2022,"max_daily_rain":127.0,"total_rain":2833.5,"flood_count":2},{"station":"大武","year":2018,"max_daily_rain":162.0,"total_rain":2172.4,"flood_count":6},{"station":"大武","year":2019,"max_daily_rain":136.5,"total_rain":1823.0,"flood_count":5},{"station":"大武","year":2020,"max_daily_rain":146.9,"total_rain":1550.2,"flood_count":9},{"station":"大武","year":2021,"max_daily_rain":224.0,"total_rain":2215.5,"flood_count":25},{"station":"大武","year":2022,"max_daily_rain":130.5,"total_rain":1584.5,"flood_count":0},{"station":"玉山","year":2018,"max_daily_rain":120.5,"total_rain":2363.9,"flood_count":0},{"station":"玉山","year":2019,"max_daily_rain":200.0,"total_rain":2726.3,"flood_count":9},{"station":"玉山","year":2020,"max_daily_rain":211.0,"total_rain":1768.1,"flood_count":0},{"station":"玉山","year":2021,"max_daily_rain":280.0,"total_rain":2239.5,"flood_count":8},{"station":"玉山","year":2022,"max_daily_rain":200.5,"total_rain":2653.1,"flood_count":0},{"station":"新竹","year":2018,"max_daily_rain":118.5,"total_rain":1164.0,"flood_count":0},{"station":"新竹","year":2019,"max_daily_rain":260.0,"total_rain":2098.3,"flood_count":46},{"station":"新竹","year":2020,"max_daily_rain":114.0,"total_rain":1025.4,"flood_count":0},{"station":"新竹","year":2021,"max_daily_rain":171.0,"total_rain":1183.8,"flood_count":8},{"station":"新竹","year":2022,"max_daily_rain":92.5,"total_rain":2062.0,"flood_count":20},{"station":"恆春","year":2018,"max_daily_rain":169.5,"total_rain":2536.0,"flood_count":5},{"station":"恆春","year":2019,"max_daily_rain":201.0,"total_rain":2287.3,"flood_count":1},{"station":"恆春","year":2020,"max_daily_rain":168.0,"total_rain":1438.5,"flood_count":1},{"station":"恆春","year":2021,"max_daily_rain":174.5,"total_rain":2399.5,"flood_count":2},{"station":"恆春","year":2022,"max_daily_rain":181.5,"total_rain":1325.5,"flood_count":0},{"station":"成功","year":2018,"max_daily_rain":162.0,"total_rain":2100.1,"flood_count":0},{"station":"成功","year":2019,"max_daily_rain":281.5,"total_rain":1469.4,"flood_count":5},{"station":"成功","year":2020,"max_daily_rain":170.7,"total_rain":1596.3,"flood_count":0},{"station":"成功","year":2021,"max_daily_rain":210.5,"total_rain":1878.5,"flood_count":9},{"station":"成功","year":2022,"max_daily_rain":171.0,"total_rain":1941.5,"flood_count":7},{"station":"蘭嶼","year":2018,"max_daily_rain":158.0,"total_rain":2765.4,"flood_count":0},{"station":"蘭嶼","year":2019,"max_daily_rain":150.4,"total_rain":2789.7,"flood_count":0},{"station":"蘭嶼","year":2020,"max_daily_rain":166.5,"total_rain":2272.1,"flood_count":0},{"station":"蘭嶼","year":2021,"max_daily_rain":194.0,"total_rain":2632.0,"flood_count":1},{"station":"蘭嶼","year":2022,"max_daily_rain":305.0,"total_rain":3237.5,"flood_count":0},{"station":"日月潭","year":2018,"max_daily_rain":105.5,"total_rain":1941.5,"flood_count":2},{"station":"日月潭","year":2019,"max_daily_rain":206.0,"total_rain":2871.0,"flood_count":6},{"station":"日月潭","year":2020,"max_daily_rain":83.5,"total_rain":1697.2,"flood_count":0},{"station":"日月潭","year":2021,"max_daily_rain":217.5,"total_rain":2141.0,"flood_count":1},{"station":"日月潭","year":2022,"max_daily_rain":91.5,"total_rain":1929.5,"flood_count":0},{"station":"臺東","year":2018,"max_daily_rain":153.5,"total_rain":1390.4,"flood_count":0},{"station":"臺東","year":2019,"max_daily_rain":129.0,"total_rain":1092.4,"flood_count":4},{"station":"臺東","year":2020,"max_daily_rain":77.0,"total_rain":1137.3,"flood_count":0},{"station":"臺東","year":2021,"max_daily_rain":246.5,"total_rain":1352.5,"flood_count":3},{"station":"臺東","year":2022,"max_daily_rain":157.5,"total_rain":1453.0,"flood_count":0},{"station":"梧棲","year":2018,"max_daily_rain":126.0,"total_rain":1079.5,"flood_count":4},{"station":"梧棲","year":2019,"max_daily_rain":146.5,"total_rain":1660.5,"flood_count":1},{"station":"梧棲","year":2020,"max_daily_rain":75.5,"total_rain":488.5,"flood_count":5},{"station":"梧棲","year":2021,"max_daily_rain":176.5,"total_rain":1339.0,"flood_count":21},{"station":"梧棲","year":2022,"max_daily_rain":202.5,"total_rain":1035.0,"flood_count":42},{"station":"馬祖","year":2018,"max_daily_rain":91.5,"total_rain":824.8,"flood_count":0},{"station":"馬祖","year":2019,"max_daily_rain":77.5,"total_rain":1086.2,"flood_count":0},{"station":"馬祖","year":2020,"max_daily_rain":117.0,"total_rain":852.1,"flood_count":0},{"station":"馬祖","year":2021,"max_daily_rain":193.5,"total_rain":1090.0,"flood_count":5},{"station":"馬祖","year":2022,"max_daily_rain":82.5,"total_rain":1247.5,"flood_count":0}],"stationCoords":{"板橋":{"x":235.7,"y":146.4,"region":"北部"},"淡水":{"x":235.7,"y":129.7,"region":"北部"},"鞍部":{"x":242.0,"y":127.5,"region":"北部"},"臺北":{"x":240.6,"y":143.0,"region":"北部"},"竹子湖":{"x":242.7,"y":129.7,"region":"北部"},"基隆":{"x":256.5,"y":133.1,"region":"北部"},"彭佳嶼":{"x":280.0,"y":77.6,"region":"北部"},"花蓮":{"x":247.5,"y":260.5,"region":"東部"},"新屋":{"x":209.5,"y":150.8,"region":"北部"},"蘇澳":{"x":264.8,"y":192.9,"region":"東部"},"宜蘭":{"x":257.2,"y":174.1,"region":"東部"},"金門":{"x":20.0,"y":209.5,"region":"離島"},"田中":{"x":176.3,"y":274.9,"region":"中部"},"東吉島":{"x":113.4,"y":339.2,"region":"離島"},"澎湖":{"x":105.7,"y":306.0,"region":"離島"},"臺南":{"x":150.0,"y":369.2,"region":"南部"},"永康":{"x":151.4,"y":364.7,"region":"南部"},"高雄":{"x":156.9,"y":416.8,"region":"南部"},"嘉義":{"x":165.9,"y":313.7,"region":"南部"},"臺中":{"x":183.2,"y":241.7,"region":"中部"},"阿里山":{"x":191.5,"y":312.6,"region":"南部"},"大武":{"x":198.4,"y":440.1,"region":"東部"},"玉山":{"x":202.6,"y":314.8,"region":"中部"},"新竹":{"x":203.2,"y":165.2,"region":"北部"},"恆春":{"x":187.3,"y":480.0,"region":"南部"},"成功":{"x":230.9,"y":358.1,"region":"東部"},"蘭嶼":{"x":243.4,"y":476.7,"region":"東部"},"日月潭":{"x":199.1,"y":273.8,"region":"中部"},"臺東":{"x":215.7,"y":396.9,"region":"東部"},"梧棲":{"x":172.1,"y":230.6,"region":"中部"},"馬祖":{"x":130.6,"y":20.0,"region":"離島"}},"floodSummary":{"n_flood_points":5919,"n_stations":33,"year_range":"2018-2022","r_total_rain":0.042,"r_max_daily_rain":0.261,"n_pairs":154,"top_station":{"station":"高雄","total_flood_points":1451,"avg_max_daily_rain":187.2}},"pm25":{"merged":[{"month":"201911","label":"2019-11","rain":68.1,"pm25":18.7},{"month":"201912","label":"2019-12","rain":166.8,"pm25":16.9},{"month":"202001","label":"2020-01","rain":54.2,"pm25":20.7},{"month":"202002","label":"2020-02","rain":57.2,"pm25":20.6},{"month":"202003","label":"2020-03","rain":118.2,"pm25":20.4},{"month":"202004","label":"2020-04","rain":75.0,"pm25":19.7},{"month":"202005","label":"2020-05","rain":350.5,"pm25":11.8},{"month":"202006","label":"2020-06","rain":102.6,"pm25":7.4},{"month":"202007","label":"2020-07","rain":117.3,"pm25":7.6},{"month":"202008","label":"2020-08","rain":295.9,"pm25":9.5},{"month":"202009","label":"2020-09","rain":122.3,"pm25":15.0},{"month":"202010","label":"2020-10","rain":166.6,"pm25":15.6},{"month":"202011","label":"2020-11","rain":158.5,"pm25":16.9},{"month":"202012","label":"2020-12","rain":238.7,"pm25":16.2},{"month":"202101","label":"2021-01","rain":65.5,"pm25":22.7},{"month":"202102","label":"2021-02","rain":71.8,"pm25":26.6},{"month":"202103","label":"2021-03","rain":52.9,"pm25":25.6},{"month":"202104","label":"2021-04","rain":55.3,"pm25":19.1},{"month":"202105","label":"2021-05","rain":129.0,"pm25":12.6},{"month":"202106","label":"2021-06","rain":346.9,"pm25":7.0},{"month":"202107","label":"2021-07","rain":232.1,"pm25":8.2},{"month":"202108","label":"2021-08","rain":457.2,"pm25":8.8},{"month":"202109","label":"2021-09","rain":134.4,"pm25":12.0},{"month":"202110","label":"2021-10","rain":266.2,"pm25":12.6},{"month":"202111","label":"2021-11","rain":90.8,"pm25":14.9},{"month":"202112","label":"2021-12","rain":103.8,"pm25":17.5},{"month":"202201","label":"2022-01","rain":150.5,"pm25":17.8},{"month":"202202","label":"2022-02","rain":227.9,"pm25":14.5},{"month":"202203","label":"2022-03","rain":124.0,"pm25":20.5},{"month":"202204","label":"2022-04","rain":84.5,"pm25":16.6},{"month":"202205","label":"2022-05","rain":418.0,"pm25":9.3},{"month":"202206","label":"2022-06","rain":217.5,"pm25":6.3},{"month":"202207","label":"2022-07","rain":87.2,"pm25":7.0},{"month":"202208","label":"2022-08","rain":161.3,"pm25":7.6},{"month":"202209","label":"2022-09","rain":214.6,"pm25":13.6},{"month":"202210","label":"2022-10","rain":430.3,"pm25":11.6},{"month":"202211","label":"2022-11","rain":177.4,"pm25":13.9},{"month":"202212","label":"2022-12","rain":165.9,"pm25":12.1}],"season":[{"month":1,"avg_pm25":19.7},{"month":2,"avg_pm25":19.3},{"month":3,"avg_pm25":20.0},{"month":4,"avg_pm25":18.2},{"month":5,"avg_pm25":12.4},{"month":6,"avg_pm25":7.5},{"month":7,"avg_pm25":7.6},{"month":8,"avg_pm25":8.6},{"month":9,"avg_pm25":11.6},{"month":10,"avg_pm25":12.8},{"month":11,"avg_pm25":15.6},{"month":12,"avg_pm25":15.9}],"summary":{"correlation":-0.574,"n_months":38,"overlap_range":"2019-11 ~ 2022-12","full_range":"2019-11 ~ 2026-06","n_stations":81,"peak_month":{"month":3,"avg_pm25":20.0},"low_month":{"month":6,"avg_pm25":7.5},"pct_diff":166.7}},"agri":{"yearly":[{"year":1994,"total_loss":7237.0},{"year":1995,"total_loss":1125.0},{"year":1996,"total_loss":19881.0},{"year":1997,"total_loss":3630.0},{"year":1998,"total_loss":12573.0},{"year":1999,"total_loss":7593.0},{"year":2000,"total_loss":10521.0},{"year":2001,"total_loss":5909.0},{"year":2002,"total_loss":1142.0},{"year":2003,"total_loss":4112.0},{"year":2004,"total_loss":6895.0},{"year":2005,"total_loss":20475.0},{"year":2006,"total_loss":3251.0},{"year":2007,"total_loss":11069.0},{"year":2008,"total_loss":13419.0},{"year":2009,"total_loss":20526.0},{"year":2010,"total_loss":9114.0},{"year":2011,"total_loss":3424.0},{"year":2012,"total_loss":5750.0},{"year":2013,"total_loss":9701.0},{"year":2014,"total_loss":3124.0},{"year":2015,"total_loss":14769.0},{"year":2016,"total_loss":35512.0},{"year":2017,"total_loss":4191.0},{"year":2018,"total_loss":5246.0},{"year":2019,"total_loss":9778.0},{"year":2020,"total_loss":3253.0},{"year":2021,"total_loss":16390.0},{"year":2022,"total_loss":9108.0},{"year":2023,"total_loss":15084.0},{"year":2024,"total_loss":30456.0}],"category":[{"category":"降雨相關(颱風/豪雨)","total_loss":260267.0,"count":255},{"category":"低溫/寒害","total_loss":31929.0,"count":69},{"category":"乾旱(缺雨)","total_loss":19116.0,"count":31},{"category":"冰雹","total_loss":4404.0,"count":15},{"category":"其他","total_loss":3397.0,"count":38},{"category":"高溫","total_loss":2793.0,"count":24},{"category":"地震","total_loss":2135.0,"count":15},{"category":"強風/龍捲風","total_loss":217.0,"count":35}],"summary":{"total_events":482,"total_loss_all":324258.0,"rain_total_loss":260267.0,"rain_pct":80.3,"year_range":"1994–2024","top_event":{"name":"98年8月莫拉克颱風","total_loss":19081.0,"year":2009},"n_categories":8},"top_events":[{"name":"98年8月莫拉克颱風","total_loss":19081.0,"year":2009},{"name":"85年8月賀伯颱風","total_loss":18543.0,"year":1996},{"name":"105年梅姬颱風及9月風災雨害","total_loss":18411.0,"year":2016},{"name":"113年7月凱米颱風","total_loss":16634.0,"year":2024},{"name":"105年1月寒流","total_loss":10840.0,"year":2016},{"name":"104年8月蘇迪勒颱風","total_loss":9983.0,"year":2015}]},"dengue":{"season":[{"month":1,"cases":759,"pct":0.7},{"month":2,"cases":75,"pct":0.1},{"month":3,"cases":33,"pct":0.0},{"month":4,"cases":43,"pct":0.0},{"month":5,"cases":85,"pct":0.1},{"month":6,"cases":610,"pct":0.6},{"month":7,"cases":2493,"pct":2.4},{"month":8,"cases":10518,"pct":10.3},{"month":9,"cases":29696,"pct":29.1},{"month":10,"cases":27727,"pct":27.1},{"month":11,"cases":23061,"pct":22.6},{"month":12,"cases":7114,"pct":7.0}],"yearly":[{"year":1998,"cases":309},{"year":1999,"cases":42},{"year":2000,"cases":113},{"year":2001,"cases":227},{"year":2002,"cases":5321},{"year":2003,"cases":86},{"year":2004,"cases":336},{"year":2005,"cases":202},{"year":2006,"cases":965},{"year":2007,"cases":2000},{"year":2008,"cases":488},{"year":2009,"cases":848},{"year":2010,"cases":1592},{"year":2011,"cases":1545},{"year":2012,"cases":1271},{"year":2013,"cases":596},{"year":2014,"cases":15492},{"year":2015,"cases":43419},{"year":2016,"cases":381},{"year":2017,"cases":10},{"year":2018,"cases":183},{"year":2019,"cases":100},{"year":2020,"cases":73},{"year":2022,"cases":20},{"year":2023,"cases":26429},{"year":2024,"cases":166}],"county_ranking":[{"county":"高雄市","cases":48624},{"county":"臺南市","cases":48036},{"county":"屏東縣","cases":2471},{"county":"雲林縣","cases":773},{"county":"新北市","cases":385},{"county":"嘉義縣","cases":294},{"county":"臺中市","cases":289},{"county":"臺北市","cases":244},{"county":"桃園市","cases":149},{"county":"澎湖縣","cases":149},{"county":"彰化縣","cases":91}],"summary":{"total_cases":107032,"local_total":102214,"imported_total":4818,"date_range":"1998-01 ~ 2024-06","peak_months_pct":78.7,"top_county":{"county":"Kaohsiung City","cases":48624},"second_county":{"county":"Tainan City","cases":48036},"major_years":[{"year":2015,"cases":43419},{"year":2023,"cases":26429},{"year":2014,"cases":15492},{"year":2002,"cases":5321}],"biggest_year":{"year":2015,"cases":43419}}},"veg":{"crops":["包心白菜","小白菜","油菜","甘藍(高麗菜)","芥藍菜","菠菜","萵苣菜","蕹菜(空心菜)","青江白菜","青蔥"],"impact_table":[{"typhoon":"凱米","typhoon_date":"2024-07-25","typhoon_note":"快閃颱風,單日雨量創紀錄","crop":"包心白菜","pre_price":18.2,"post_price":22.4,"pct_change":23.1},{"typhoon":"凱米","typhoon_date":"2024-07-25","typhoon_note":"快閃颱風,單日雨量創紀錄","crop":"小白菜","pre_price":46.0,"post_price":68.3,"pct_change":48.5},{"typhoon":"凱米","typhoon_date":"2024-07-25","typhoon_note":"快閃颱風,單日雨量創紀錄","crop":"油菜","pre_price":39.9,"post_price":58.6,"pct_change":46.9},{"typhoon":"凱米","typhoon_date":"2024-07-25","typhoon_note":"快閃颱風,單日雨量創紀錄","crop":"甘藍(高麗菜)","pre_price":23.6,"post_price":23.7,"pct_change":0.4},{"typhoon":"凱米","typhoon_date":"2024-07-25","typhoon_note":"快閃颱風,單日雨量創紀錄","crop":"芥藍菜","pre_price":48.0,"post_price":79.9,"pct_change":66.5},{"typhoon":"凱米","typhoon_date":"2024-07-25","typhoon_note":"快閃颱風,單日雨量創紀錄","crop":"菠菜","pre_price":68.5,"post_price":76.0,"pct_change":10.9},{"typhoon":"凱米","typhoon_date":"2024-07-25","typhoon_note":"快閃颱風,單日雨量創紀錄","crop":"萵苣菜","pre_price":52.7,"post_price":78.6,"pct_change":49.1},{"typhoon":"凱米","typhoon_date":"2024-07-25","typhoon_note":"快閃颱風,單日雨量創紀錄","crop":"蕹菜(空心菜)","pre_price":40.2,"post_price":78.1,"pct_change":94.3},{"typhoon":"凱米","typhoon_date":"2024-07-25","typhoon_note":"快閃颱風,單日雨量創紀錄","crop":"青江白菜","pre_price":46.2,"post_price":66.2,"pct_change":43.3},{"typhoon":"凱米","typhoon_date":"2024-07-25","typhoon_note":"快閃颱風,單日雨量創紀錄","crop":"青蔥","pre_price":58.2,"post_price":105.4,"pct_change":81.1},{"typhoon":"山陀兒","typhoon_date":"2024-10-03","typhoon_note":"路徑緩慢,登陸後迅速減弱","crop":"包心白菜","pre_price":24.8,"post_price":31.8,"pct_change":28.2},{"typhoon":"山陀兒","typhoon_date":"2024-10-03","typhoon_note":"路徑緩慢,登陸後迅速減弱","crop":"小白菜","pre_price":57.0,"post_price":52.6,"pct_change":-7.7},{"typhoon":"山陀兒","typhoon_date":"2024-10-03","typhoon_note":"路徑緩慢,登陸後迅速減弱","crop":"油菜","pre_price":48.3,"post_price":40.1,"pct_change":-17.0},{"typhoon":"山陀兒","typhoon_date":"2024-10-03","typhoon_note":"路徑緩慢,登陸後迅速減弱","crop":"甘藍(高麗菜)","pre_price":39.0,"post_price":32.9,"pct_change":-15.6},{"typhoon":"山陀兒","typhoon_date":"2024-10-03","typhoon_note":"路徑緩慢,登陸後迅速減弱","crop":"芥藍菜","pre_price":59.1,"post_price":70.8,"pct_change":19.8},{"typhoon":"山陀兒","typhoon_date":"2024-10-03","typhoon_note":"路徑緩慢,登陸後迅速減弱","crop":"菠菜","pre_price":69.8,"post_price":69.3,"pct_change":-0.7},{"typhoon":"山陀兒","typhoon_date":"2024-10-03","typhoon_note":"路徑緩慢,登陸後迅速減弱","crop":"萵苣菜","pre_price":67.9,"post_price":80.9,"pct_change":19.1},{"typhoon":"山陀兒","typhoon_date":"2024-10-03","typhoon_note":"路徑緩慢,登陸後迅速減弱","crop":"蕹菜(空心菜)","pre_price":67.5,"post_price":70.2,"pct_change":4.0},{"typhoon":"山陀兒","typhoon_date":"2024-10-03","typhoon_note":"路徑緩慢,登陸後迅速減弱","crop":"青江白菜","pre_price":62.5,"post_price":43.8,"pct_change":-29.9},{"typhoon":"山陀兒","typhoon_date":"2024-10-03","typhoon_note":"路徑緩慢,登陸後迅速減弱","crop":"青蔥","pre_price":121.6,"post_price":137.2,"pct_change":12.8},{"typhoon":"康芮","typhoon_date":"2024-10-31","typhoon_note":"強颱登陸台東","crop":"包心白菜","pre_price":23.7,"post_price":27.3,"pct_change":15.2},{"typhoon":"康芮","typhoon_date":"2024-10-31","typhoon_note":"強颱登陸台東","crop":"小白菜","pre_price":30.0,"post_price":40.9,"pct_change":36.3},{"typhoon":"康芮","typhoon_date":"2024-10-31","typhoon_note":"強颱登陸台東","crop":"油菜","pre_price":25.1,"post_price":39.1,"pct_change":55.8},{"typhoon":"康芮","typhoon_date":"2024-10-31","typhoon_note":"強颱登陸台東","crop":"甘藍(高麗菜)","pre_price":25.1,"post_price":23.4,"pct_change":-6.8},{"typhoon":"康芮","typhoon_date":"2024-10-31","typhoon_note":"強颱登陸台東","crop":"芥藍菜","pre_price":46.3,"post_price":64.0,"pct_change":38.2},{"typhoon":"康芮","typhoon_date":"2024-10-31","typhoon_note":"強颱登陸台東","crop":"菠菜","pre_price":67.3,"post_price":86.4,"pct_change":28.4},{"typhoon":"康芮","typhoon_date":"2024-10-31","typhoon_note":"強颱登陸台東","crop":"萵苣菜","pre_price":63.4,"post_price":73.1,"pct_change":15.3},{"typhoon":"康芮","typhoon_date":"2024-10-31","typhoon_note":"強颱登陸台東","crop":"蕹菜(空心菜)","pre_price":39.3,"post_price":69.5,"pct_change":76.8},{"typhoon":"康芮","typhoon_date":"2024-10-31","typhoon_note":"強颱登陸台東","crop":"青江白菜","pre_price":28.7,"post_price":36.8,"pct_change":28.2},{"typhoon":"康芮","typhoon_date":"2024-10-31","typhoon_note":"強颱登陸台東","crop":"青蔥","pre_price":168.6,"post_price":191.1,"pct_change":13.3}],"summary":{"n_crops":10,"date_range":"2024-01-01 ~ 2026-07-23","typhoons":[{"name":"凱米","date":"2024-07-25","note":"快閃颱風,單日雨量創紀錄"},{"name":"山陀兒","date":"2024-10-03","note":"路徑緩慢,登陸後迅速減弱"},{"name":"康芮","date":"2024-10-31","note":"強颱登陸台東"}],"avg_pct_by_typhoon":{"凱米":46.4,"山陀兒":1.3,"康芮":30.1},"biggest_mover":{"typhoon":"凱米","typhoon_date":"2024-07-25","typhoon_note":"快閃颱風,單日雨量創紀錄","crop":"蕹菜(空心菜)","pre_price":40.2,"post_price":78.1,"pct_change":94.3},"most_stable_example":{"crop":"甘藍(高麗菜)","note":"耐儲放,價格相對穩定,三次颱風漲跌幅都在±15%以內甚至下跌"}}},"traffic":{"yearly":[{"year":2013,"total":278336,"a1":1867,"a2":276469,"has_weather":false},{"year":2014,"total":306790,"a1":1770,"a2":305020,"has_weather":false},{"year":2015,"total":305259,"a1":1639,"a2":303620,"has_weather":false},{"year":2016,"total":305419,"a1":1555,"a2":303864,"has_weather":false},{"year":2017,"total":296641,"a1":1434,"a2":295207,"has_weather":false},{"year":2018,"total":320240,"a1":1457,"a2":318783,"has_weather":false},{"year":2019,"total":341905,"a1":1814,"a2":340091,"has_weather":false},{"year":2020,"total":362316,"a1":1806,"a2":360510,"has_weather":false},{"year":2021,"total":358170,"a1":1806,"a2":356364,"has_weather":false},{"year":2022,"total":375785,"a1":1809,"a2":373976,"has_weather":true},{"year":2023,"total":402985,"a1":1753,"a2":401232,"has_weather":true},{"year":2024,"total":393811,"a1":1673,"a2":392138,"has_weather":true},{"year":2025,"total":403313,"a1":1606,"a2":401707,"has_weather":true}],"season":[{"month":1,"rain":11984,"non_rain":130028,"rain_share":8.44},{"month":2,"rain":13705,"non_rain":102908,"rain_share":11.75},{"month":3,"rain":11997,"non_rain":122634,"rain_share":8.91},{"month":4,"rain":10276,"non_rain":113735,"rain_share":8.29},{"month":5,"rain":16512,"non_rain":110637,"rain_share":12.99},{"month":6,"rain":14971,"non_rain":111536,"rain_share":11.83},{"month":7,"rain":13875,"non_rain":115935,"rain_share":10.69},{"month":8,"rain":10805,"non_rain":118757,"rain_share":8.34},{"month":9,"rain":12912,"non_rain":114740,"rain_share":10.12},{"month":10,"rain":15084,"non_rain":116253,"rain_share":11.48},{"month":11,"rain":11677,"non_rain":126464,"rain_share":8.45},{"month":12,"rain":15468,"non_rain":133001,"rain_share":10.42}],"class_compare":{"a1":{"rain":655,"non_rain":6186,"rain_share":9.57},"a2":{"rain":158611,"non_rain":1410442,"rain_share":10.11},"fatal_share_rain":0.411,"fatal_share_nonrain":0.437},"county_by_share":[{"county":"基隆市","rain":3507,"non_rain":11022,"total":14529,"rain_share":24.14},{"county":"宜蘭縣","rain":6468,"non_rain":26965,"total":33433,"rain_share":19.35},{"county":"臺北市","rain":15802,"non_rain":78695,"total":94497,"rain_share":16.72},{"county":"桃園市","rain":28663,"non_rain":158653,"total":187316,"rain_share":15.3},{"county":"新北市","rain":29061,"non_rain":166842,"total":195903,"rain_share":14.83},{"county":"花蓮縣","rain":3540,"non_rain":21322,"total":24862,"rain_share":14.24},{"county":"連江縣","rain":27,"non_rain":192,"total":219,"rain_share":12.33},{"county":"新竹縣","rain":5161,"non_rain":41464,"total":46625,"rain_share":11.07},{"county":"新竹市","rain":4176,"non_rain":35736,"total":39912,"rain_share":10.46},{"county":"臺東縣","rain":1534,"non_rain":14675,"total":16209,"rain_share":9.46},{"county":"金門縣","rain":355,"non_rain":3714,"total":4069,"rain_share":8.72},{"county":"苗栗縣","rain":2564,"non_rain":28498,"total":31062,"rain_share":8.25},{"county":"南投縣","rain":2588,"non_rain":29336,"total":31924,"rain_share":8.11},{"county":"嘉義市","rain":1479,"non_rain":17165,"total":18644,"rain_share":7.93},{"county":"臺中市","rain":19949,"non_rain":240851,"total":260800,"rain_share":7.65},{"county":"嘉義縣","rain":2120,"non_rain":31146,"total":33266,"rain_share":6.37},{"county":"雲林縣","rain":2813,"non_rain":43289,"total":46102,"rain_share":6.1},{"county":"臺南市","rain":10990,"non_rain":170110,"total":181100,"rain_share":6.07},{"county":"屏東縣","rain":3951,"non_rain":61352,"total":65303,"rain_share":6.05},{"county":"彰化縣","rain":5674,"non_rain":91681,"total":97355,"rain_share":5.83},{"county":"高雄市","rain":8647,"non_rain":139961,"total":148608,"rain_share":5.82},{"county":"澎湖縣","rain":197,"non_rain":3959,"total":4156,"rain_share":4.74}],"county_by_count":[{"county":"新北市","rain":29061,"non_rain":166842,"total":195903,"rain_share":14.83},{"county":"桃園市","rain":28663,"non_rain":158653,"total":187316,"rain_share":15.3},{"county":"臺中市","rain":19949,"non_rain":240851,"total":260800,"rain_share":7.65},{"county":"臺北市","rain":15802,"non_rain":78695,"total":94497,"rain_share":16.72},{"county":"臺南市","rain":10990,"non_rain":170110,"total":181100,"rain_share":6.07},{"county":"高雄市","rain":8647,"non_rain":139961,"total":148608,"rain_share":5.82},{"county":"宜蘭縣","rain":6468,"non_rain":26965,"total":33433,"rain_share":19.35},{"county":"彰化縣","rain":5674,"non_rain":91681,"total":97355,"rain_share":5.83},{"county":"新竹縣","rain":5161,"non_rain":41464,"total":46625,"rain_share":11.07},{"county":"新竹市","rain":4176,"non_rain":35736,"total":39912,"rain_share":10.46},{"county":"屏東縣","rain":3951,"non_rain":61352,"total":65303,"rain_share":6.05},{"county":"花蓮縣","rain":3540,"non_rain":21322,"total":24862,"rain_share":14.24},{"county":"基隆市","rain":3507,"non_rain":11022,"total":14529,"rain_share":24.14},{"county":"雲林縣","rain":2813,"non_rain":43289,"total":46102,"rain_share":6.1},{"county":"南投縣","rain":2588,"non_rain":29336,"total":31924,"rain_share":8.11},{"county":"苗栗縣","rain":2564,"non_rain":28498,"total":31062,"rain_share":8.25},{"county":"嘉義縣","rain":2120,"non_rain":31146,"total":33266,"rain_share":6.37},{"county":"臺東縣","rain":1534,"non_rain":14675,"total":16209,"rain_share":9.46},{"county":"嘉義市","rain":1479,"non_rain":17165,"total":18644,"rain_share":7.93},{"county":"金門縣","rain":355,"non_rain":3714,"total":4069,"rain_share":8.72},{"county":"澎湖縣","rain":197,"non_rain":3959,"total":4156,"rain_share":4.74},{"county":"連江縣","rain":27,"non_rain":192,"total":219,"rain_share":12.33}],"summary":{"weather_years_range":"2022–2025","all_years_range":"2013–2025","total_2225":1575894,"rain_2225":159266,"nonrain_2225":1416628,"overall_rain_share":10.11,"top_county":{"county":"基隆市","rain":3507,"non_rain":11022,"total":14529,"rain_share":24.14},"top_month":{"month":5,"rain":16512,"non_rain":110637,"rain_share":12.99},"bottom_month":{"month":4,"rain":10276,"non_rain":113735,"rain_share":8.29},"class_compare":{"a1":{"rain":655,"non_rain":6186,"rain_share":9.57},"a2":{"rain":158611,"non_rain":1410442,"rain_share":10.11},"fatal_share_rain":0.411,"fatal_share_nonrain":0.437},"n_groups":7759}},"reservoir":{"reservoirs":["石門水庫","翡翠水庫","寶山第二水庫","明德水庫","鯉魚潭水庫","德基水庫","日月潭水庫","曾文水庫"],"yearly":{"石門水庫":[{"year":2014,"rain_total":1658.4,"avg_capacity_rate":79.53,"yearend_capacity_rate":60.09},{"year":2015,"rain_total":2488.5,"avg_capacity_rate":61.91,"yearend_capacity_rate":69.0},{"year":2016,"rain_total":2742.4,"avg_capacity_rate":92.27,"yearend_capacity_rate":87.59},{"year":2017,"rain_total":2356.1,"avg_capacity_rate":76.64,"yearend_capacity_rate":100.0},{"year":2018,"rain_total":1951.9,"avg_capacity_rate":82.57,"yearend_capacity_rate":82.88},{"year":2019,"rain_total":2269.6,"avg_capacity_rate":83.99,"yearend_capacity_rate":88.73},{"year":2020,"rain_total":1489.8,"avg_capacity_rate":55.02,"yearend_capacity_rate":66.14},{"year":2021,"rain_total":2501.9,"avg_capacity_rate":69.57,"yearend_capacity_rate":98.78},{"year":2022,"rain_total":2976.4,"avg_capacity_rate":96.01,"yearend_capacity_rate":100.0},{"year":2023,"rain_total":2128.7,"avg_capacity_rate":81.1,"yearend_capacity_rate":80.63},{"year":2024,"rain_total":2212.1,"avg_capacity_rate":66.75,"yearend_capacity_rate":100.0},{"year":2025,"rain_total":1925.8,"avg_capacity_rate":96.07,"yearend_capacity_rate":98.75}],"翡翠水庫":[{"year":2014,"rain_total":3450.1,"avg_capacity_rate":83.12,"yearend_capacity_rate":92.42},{"year":2015,"rain_total":3811.8,"avg_capacity_rate":83.94,"yearend_capacity_rate":91.97},{"year":2016,"rain_total":4364.1,"avg_capacity_rate":84.19,"yearend_capacity_rate":90.47},{"year":2017,"rain_total":3419.8,"avg_capacity_rate":81.47,"yearend_capacity_rate":89.57},{"year":2018,"rain_total":3430.5,"avg_capacity_rate":75.04,"yearend_capacity_rate":91.6},{"year":2019,"rain_total":3315.5,"avg_capacity_rate":79.15,"yearend_capacity_rate":91.13},{"year":2020,"rain_total":2983.8,"avg_capacity_rate":74.65,"yearend_capacity_rate":94.66},{"year":2021,"rain_total":3428.3,"avg_capacity_rate":85.38,"yearend_capacity_rate":94.82},{"year":2022,"rain_total":4917.1,"avg_capacity_rate":88.4,"yearend_capacity_rate":91.89},{"year":2023,"rain_total":2695.9,"avg_capacity_rate":78.56,"yearend_capacity_rate":94.66},{"year":2024,"rain_total":3633.2,"avg_capacity_rate":79.97,"yearend_capacity_rate":95.3},{"year":2025,"rain_total":3826.3,"avg_capacity_rate":82.8,"yearend_capacity_rate":95.52}],"寶山第二水庫":[{"year":2014,"rain_total":1328.8,"avg_capacity_rate":90.73,"yearend_capacity_rate":50.3},{"year":2015,"rain_total":2077.5,"avg_capacity_rate":69.33,"yearend_capacity_rate":76.1},{"year":2016,"rain_total":2815.5,"avg_capacity_rate":96.21,"yearend_capacity_rate":87.32},{"year":2017,"rain_total":2380.4,"avg_capacity_rate":77.19,"yearend_capacity_rate":44.71},{"year":2018,"rain_total":2291.4,"avg_capacity_rate":86.54,"yearend_capacity_rate":60.44},{"year":2019,"rain_total":2843.6,"avg_capacity_rate":82.18,"yearend_capacity_rate":69.84},{"year":2020,"rain_total":1498.3,"avg_capacity_rate":61.13,"yearend_capacity_rate":33.31},{"year":2021,"rain_total":2502.6,"avg_capacity_rate":58.62,"yearend_capacity_rate":79.14},{"year":2022,"rain_total":3154.2,"avg_capacity_rate":96.97,"yearend_capacity_rate":99.32},{"year":2023,"rain_total":1873.2,"avg_capacity_rate":85.2,"yearend_capacity_rate":80.31},{"year":2024,"rain_total":1968.5,"avg_capacity_rate":78.39,"yearend_capacity_rate":92.3},{"year":2025,"rain_total":2111.6,"avg_capacity_rate":94.75,"yearend_capacity_rate":77.9}],"明德水庫":[{"year":2014,"rain_total":1766.6,"avg_capacity_rate":72.8,"yearend_capacity_rate":28.88},{"year":2015,"rain_total":1675.2,"avg_capacity_rate":62.18,"yearend_capacity_rate":66.45},{"year":2016,"rain_total":2264.3,"avg_capacity_rate":86.59,"yearend_capacity_rate":68.04},{"year":2017,"rain_total":2050.4,"avg_capacity_rate":65.63,"yearend_capacity_rate":20.58},{"year":2018,"rain_total":1580.1,"avg_capacity_rate":65.08,"yearend_capacity_rate":53.44},{"year":2019,"rain_total":2191.4,"avg_capacity_rate":78.71,"yearend_capacity_rate":64.05},{"year":2020,"rain_total":1106.4,"avg_capacity_rate":52.47,"yearend_capacity_rate":16.39},{"year":2021,"rain_total":1878.7,"avg_capacity_rate":48.72,"yearend_capacity_rate":58.31},{"year":2022,"rain_total":2692.2,"avg_capacity_rate":82.44,"yearend_capacity_rate":63.09},{"year":2023,"rain_total":1544.7,"avg_capacity_rate":74.46,"yearend_capacity_rate":66.44},{"year":2024,"rain_total":1547.6,"avg_capacity_rate":68.76,"yearend_capacity_rate":86.69},{"year":2025,"rain_total":1859.8,"avg_capacity_rate":87.53,"yearend_capacity_rate":66.3}],"鯉魚潭水庫":[{"year":2014,"rain_total":1661.1,"avg_capacity_rate":81.85,"yearend_capacity_rate":53.45},{"year":2015,"rain_total":1787.3,"avg_capacity_rate":64.32,"yearend_capacity_rate":77.28},{"year":2016,"rain_total":2034.7,"avg_capacity_rate":94.4,"yearend_capacity_rate":77.95},{"year":2017,"rain_total":2233.7,"avg_capacity_rate":80.97,"yearend_capacity_rate":70.33},{"year":2018,"rain_total":1572.0,"avg_capacity_rate":86.44,"yearend_capacity_rate":63.14},{"year":2019,"rain_total":2705.1,"avg_capacity_rate":80.22,"yearend_capacity_rate":77.19},{"year":2020,"rain_total":1124.3,"avg_capacity_rate":58.08,"yearend_capacity_rate":30.31},{"year":2021,"rain_total":2042.3,"avg_capacity_rate":55.49,"yearend_capacity_rate":78.1},{"year":2022,"rain_total":2420.3,"avg_capacity_rate":93.47,"yearend_capacity_rate":85.4},{"year":2023,"rain_total":1550.8,"avg_capacity_rate":73.86,"yearend_capacity_rate":76.07},{"year":2024,"rain_total":1927.5,"avg_capacity_rate":78.98,"yearend_capacity_rate":89.15},{"year":2025,"rain_total":2184.4,"avg_capacity_rate":93.19,"yearend_capacity_rate":73.48}],"德基水庫":[{"year":2014,"rain_total":229.0,"avg_capacity_rate":77.77,"yearend_capacity_rate":73.1},{"year":2015,"rain_total":1656.0,"avg_capacity_rate":69.67,"yearend_capacity_rate":97.36},{"year":2016,"rain_total":2879.0,"avg_capacity_rate":84.86,"yearend_capacity_rate":96.43},{"year":2017,"rain_total":1392.5,"avg_capacity_rate":81.29,"yearend_capacity_rate":95.95},{"year":2018,"rain_total":984.5,"avg_capacity_rate":80.3,"yearend_capacity_rate":65.45},{"year":2019,"rain_total":2080.0,"avg_capacity_rate":77.75,"yearend_capacity_rate":75.87},{"year":2020,"rain_total":910.5,"avg_capacity_rate":50.89,"yearend_capacity_rate":31.26},{"year":2021,"rain_total":1324.5,"avg_capacity_rate":49.79,"yearend_capacity_rate":99.45},{"year":2022,"rain_total":2040.5,"avg_capacity_rate":95.21,"yearend_capacity_rate":98.79},{"year":2023,"rain_total":1343.5,"avg_capacity_rate":81.59,"yearend_capacity_rate":91.17},{"year":2024,"rain_total":1607.5,"avg_capacity_rate":85.94,"yearend_capacity_rate":98.33},{"year":2025,"rain_total":1511.0,"avg_capacity_rate":94.37,"yearend_capacity_rate":96.4}],"日月潭水庫":[{"year":2014,"rain_total":2014.5,"avg_capacity_rate":95.61,"yearend_capacity_rate":97.62},{"year":2015,"rain_total":1525.5,"avg_capacity_rate":88.37,"yearend_capacity_rate":98.62},{"year":2016,"rain_total":2124.5,"avg_capacity_rate":96.14,"yearend_capacity_rate":94.94},{"year":2017,"rain_total":2532.5,"avg_capacity_rate":94.63,"yearend_capacity_rate":97.6},{"year":2018,"rain_total":1939.5,"avg_capacity_rate":94.45,"yearend_capacity_rate":94.8},{"year":2019,"rain_total":2649.0,"avg_capacity_rate":93.95,"yearend_capacity_rate":90.88},{"year":2020,"rain_total":1185.5,"avg_capacity_rate":83.31,"yearend_capacity_rate":81.11},{"year":2021,"rain_total":1748.5,"avg_capacity_rate":73.95,"yearend_capacity_rate":94.17},{"year":2022,"rain_total":1787.0,"avg_capacity_rate":96.26,"yearend_capacity_rate":96.44},{"year":2023,"rain_total":1959.0,"avg_capacity_rate":85.7,"yearend_capacity_rate":91.99},{"year":2024,"rain_total":2751.0,"avg_capacity_rate":90.83,"yearend_capacity_rate":96.25},{"year":2025,"rain_total":2523.5,"avg_capacity_rate":92.81,"yearend_capacity_rate":93.72}],"曾文水庫":[{"year":2014,"rain_total":2241.6,"avg_capacity_rate":47.29,"yearend_capacity_rate":55.84},{"year":2015,"rain_total":2715.8,"avg_capacity_rate":60.1,"yearend_capacity_rate":78.89},{"year":2016,"rain_total":3382.1,"avg_capacity_rate":77.42,"yearend_capacity_rate":85.92},{"year":2017,"rain_total":2811.6,"avg_capacity_rate":59.71,"yearend_capacity_rate":52.26},{"year":2018,"rain_total":3069.0,"avg_capacity_rate":48.26,"yearend_capacity_rate":63.9},{"year":2019,"rain_total":3340.4,"avg_capacity_rate":61.24,"yearend_capacity_rate":66.21},{"year":2020,"rain_total":1906.1,"avg_capacity_rate":31.62,"yearend_capacity_rate":22.85},{"year":2021,"rain_total":3176.3,"avg_capacity_rate":48.62,"yearend_capacity_rate":68.78},{"year":2022,"rain_total":1798.0,"avg_capacity_rate":44.61,"yearend_capacity_rate":27.94},{"year":2023,"rain_total":2358.5,"avg_capacity_rate":45.81,"yearend_capacity_rate":91.31},{"year":2024,"rain_total":3550.3,"avg_capacity_rate":74.1,"yearend_capacity_rate":100.0},{"year":2025,"rain_total":3592.1,"avg_capacity_rate":84.65,"yearend_capacity_rate":75.03}]},"season":{"石門水庫":[{"month":1,"avg_rain":76.0,"avg_capacity_rate":82.9},{"month":2,"avg_rain":81.1,"avg_capacity_rate":75.35},{"month":3,"avg_rain":137.7,"avg_capacity_rate":64.0},{"month":4,"avg_rain":114.8,"avg_capacity_rate":58.42},{"month":5,"avg_rain":241.5,"avg_capacity_rate":60.36},{"month":6,"avg_rain":282.7,"avg_capacity_rate":73.3},{"month":7,"avg_rain":307.5,"avg_capacity_rate":83.39},{"month":8,"avg_rain":263.6,"avg_capacity_rate":88.06},{"month":9,"avg_rain":329.4,"avg_capacity_rate":88.67},{"month":10,"avg_rain":246.0,"avg_capacity_rate":91.36},{"month":11,"avg_rain":72.6,"avg_capacity_rate":89.38},{"month":12,"avg_rain":72.3,"avg_capacity_rate":86.17}],"翡翠水庫":[{"month":1,"avg_rain":170.7,"avg_capacity_rate":91.01},{"month":2,"avg_rain":196.7,"avg_capacity_rate":88.26},{"month":3,"avg_rain":169.0,"avg_capacity_rate":85.48},{"month":4,"avg_rain":151.7,"avg_capacity_rate":79.65},{"month":5,"avg_rain":333.0,"avg_capacity_rate":74.44},{"month":6,"avg_rain":333.7,"avg_capacity_rate":76.1},{"month":7,"avg_rain":320.7,"avg_capacity_rate":73.96},{"month":8,"avg_rain":268.5,"avg_capacity_rate":73.17},{"month":9,"avg_rain":491.3,"avg_capacity_rate":73.63},{"month":10,"avg_rain":596.2,"avg_capacity_rate":81.84},{"month":11,"avg_rain":306.5,"avg_capacity_rate":87.77},{"month":12,"avg_rain":268.4,"avg_capacity_rate":91.92}],"寶山第二水庫":[{"month":1,"avg_rain":107.6,"avg_capacity_rate":71.29},{"month":2,"avg_rain":106.2,"avg_capacity_rate":67.34},{"month":3,"avg_rain":205.3,"avg_capacity_rate":63.66},{"month":4,"avg_rain":164.4,"avg_capacity_rate":66.8},{"month":5,"avg_rain":303.8,"avg_capacity_rate":74.88},{"month":6,"avg_rain":265.5,"avg_capacity_rate":90.72},{"month":7,"avg_rain":335.1,"avg_capacity_rate":95.99},{"month":8,"avg_rain":269.9,"avg_capacity_rate":96.45},{"month":9,"avg_rain":249.8,"avg_capacity_rate":96.26},{"month":10,"avg_rain":104.7,"avg_capacity_rate":93.12},{"month":11,"avg_rain":46.3,"avg_capacity_rate":84.71},{"month":12,"avg_rain":78.5,"avg_capacity_rate":74.67}],"明德水庫":[{"month":1,"avg_rain":69.8,"avg_capacity_rate":58.46},{"month":2,"avg_rain":80.0,"avg_capacity_rate":60.5},{"month":3,"avg_rain":188.3,"avg_capacity_rate":60.85},{"month":4,"avg_rain":130.4,"avg_capacity_rate":61.16},{"month":5,"avg_rain":302.9,"avg_capacity_rate":72.04},{"month":6,"avg_rain":277.9,"avg_capacity_rate":85.11},{"month":7,"avg_rain":231.0,"avg_capacity_rate":85.67},{"month":8,"avg_rain":288.0,"avg_capacity_rate":83.24},{"month":9,"avg_rain":166.3,"avg_capacity_rate":83.78},{"month":10,"avg_rain":39.4,"avg_capacity_rate":75.42},{"month":11,"avg_rain":23.4,"avg_capacity_rate":60.91},{"month":12,"avg_rain":49.1,"avg_capacity_rate":55.29}],"鯉魚潭水庫":[{"month":1,"avg_rain":50.1,"avg_capacity_rate":69.79},{"month":2,"avg_rain":48.3,"avg_capacity_rate":64.8},{"month":3,"avg_rain":118.4,"avg_capacity_rate":59.17},{"month":4,"avg_rain":117.4,"avg_capacity_rate":59.32},{"month":5,"avg_rain":346.7,"avg_capacity_rate":67.71},{"month":6,"avg_rain":367.1,"avg_capacity_rate":83.49},{"month":7,"avg_rain":290.1,"avg_capacity_rate":92.73},{"month":8,"avg_rain":369.9,"avg_capacity_rate":96.14},{"month":9,"avg_rain":154.7,"avg_capacity_rate":96.05},{"month":10,"avg_rain":23.4,"avg_capacity_rate":92.13},{"month":11,"avg_rain":20.9,"avg_capacity_rate":83.03},{"month":12,"avg_rain":29.9,"avg_capacity_rate":74.99}],"德基水庫":[{"month":1,"avg_rain":86.7,"avg_capacity_rate":81.79},{"month":2,"avg_rain":66.5,"avg_capacity_rate":74.93},{"month":3,"avg_rain":149.8,"avg_capacity_rate":64.39},{"month":4,"avg_rain":118.0,"avg_capacity_rate":59.59},{"month":5,"avg_rain":288.5,"avg_capacity_rate":60.3},{"month":6,"avg_rain":185.5,"avg_capacity_rate":70.94},{"month":7,"avg_rain":131.3,"avg_capacity_rate":74.45},{"month":8,"avg_rain":165.9,"avg_capacity_rate":82.9},{"month":9,"avg_rain":177.4,"avg_capacity_rate":88.15},{"month":10,"avg_rain":94.4,"avg_capacity_rate":91.66},{"month":11,"avg_rain":41.4,"avg_capacity_rate":88.3},{"month":12,"avg_rain":58.5,"avg_capacity_rate":86.29}],"日月潭水庫":[{"month":1,"avg_rain":48.8,"avg_capacity_rate":93.39},{"month":2,"avg_rain":43.7,"avg_capacity_rate":87.86},{"month":3,"avg_rain":77.2,"avg_capacity_rate":82.47},{"month":4,"avg_rain":110.5,"avg_capacity_rate":81.81},{"month":5,"avg_rain":355.2,"avg_capacity_rate":82.65},{"month":6,"avg_rain":437.3,"avg_capacity_rate":92.35},{"month":7,"avg_rain":409.0,"avg_capacity_rate":95.44},{"month":8,"avg_rain":335.8,"avg_capacity_rate":94.47},{"month":9,"avg_rain":153.0,"avg_capacity_rate":95.61},{"month":10,"avg_rain":32.9,"avg_capacity_rate":93.98},{"month":11,"avg_rain":19.2,"avg_capacity_rate":91.86},{"month":12,"avg_rain":39.2,"avg_capacity_rate":93.59}],"曾文水庫":[{"month":1,"avg_rain":45.1,"avg_capacity_rate":62.41},{"month":2,"avg_rain":44.8,"avg_capacity_rate":50.17},{"month":3,"avg_rain":70.6,"avg_capacity_rate":35.56},{"month":4,"avg_rain":93.7,"avg_capacity_rate":26.49},{"month":5,"avg_rain":380.8,"avg_capacity_rate":24.03},{"month":6,"avg_rain":479.8,"avg_capacity_rate":45.64},{"month":7,"avg_rain":590.7,"avg_capacity_rate":60.08},{"month":8,"avg_rain":647.1,"avg_capacity_rate":76.38},{"month":9,"avg_rain":326.2,"avg_capacity_rate":84.93},{"month":10,"avg_rain":84.9,"avg_capacity_rate":80.38},{"month":11,"avg_rain":27.6,"avg_capacity_rate":71.06},{"month":12,"avg_rain":37.1,"avg_capacity_rate":65.33}]},"lag_analysis":{"石門水庫":[{"lag":1,"corr":0.204,"n":4261},{"lag":3,"corr":0.284,"n":4257},{"lag":5,"corr":0.29,"n":4251},{"lag":7,"corr":0.28,"n":4250},{"lag":9,"corr":0.269,"n":4247},{"lag":11,"corr":0.236,"n":4243},{"lag":13,"corr":0.223,"n":4240},{"lag":15,"corr":0.223,"n":4235},{"lag":17,"corr":0.208,"n":4232},{"lag":19,"corr":0.204,"n":4230},{"lag":21,"corr":0.196,"n":4227},{"lag":23,"corr":0.188,"n":4225},{"lag":25,"corr":0.183,"n":4222},{"lag":27,"corr":0.172,"n":4217},{"lag":29,"corr":0.165,"n":4213},{"lag":31,"corr":0.163,"n":4212}],"翡翠水庫":[{"lag":1,"corr":0.255,"n":4291},{"lag":3,"corr":0.324,"n":4282},{"lag":5,"corr":0.3,"n":4281},{"lag":7,"corr":0.278,"n":4280},{"lag":9,"corr":0.241,"n":4276},{"lag":11,"corr":0.238,"n":4276},{"lag":13,"corr":0.222,"n":4274},{"lag":15,"corr":0.204,"n":4271},{"lag":17,"corr":0.181,"n":4269},{"lag":19,"corr":0.169,"n":4266},{"lag":21,"corr":0.154,"n":4264},{"lag":23,"corr":0.145,"n":4263},{"lag":25,"corr":0.145,"n":4263},{"lag":27,"corr":0.14,"n":4260},{"lag":29,"corr":0.139,"n":4256},{"lag":31,"corr":0.141,"n":4254}],"寶山第二水庫":[{"lag":1,"corr":0.209,"n":4317},{"lag":3,"corr":0.239,"n":4312},{"lag":5,"corr":0.242,"n":4310},{"lag":7,"corr":0.24,"n":4308},{"lag":9,"corr":0.231,"n":4306},{"lag":11,"corr":0.216,"n":4304},{"lag":13,"corr":0.206,"n":4302},{"lag":15,"corr":0.196,"n":4301},{"lag":17,"corr":0.18,"n":4299},{"lag":19,"corr":0.178,"n":4296},{"lag":21,"corr":0.169,"n":4294},{"lag":23,"corr":0.162,"n":4293},{"lag":25,"corr":0.157,"n":4291},{"lag":27,"corr":0.151,"n":4290},{"lag":29,"corr":0.149,"n":4288},{"lag":31,"corr":0.143,"n":4284}],"明德水庫":[{"lag":1,"corr":0.397,"n":4154},{"lag":3,"corr":0.392,"n":4150},{"lag":5,"corr":0.351,"n":4146},{"lag":7,"corr":0.316,"n":4144},{"lag":9,"corr":0.276,"n":4144},{"lag":11,"corr":0.244,"n":4141},{"lag":13,"corr":0.22,"n":4138},{"lag":15,"corr":0.205,"n":4132},{"lag":17,"corr":0.19,"n":4133},{"lag":19,"corr":0.176,"n":4128},{"lag":21,"corr":0.168,"n":4135},{"lag":23,"corr":0.151,"n":4130},{"lag":25,"corr":0.137,"n":4132},{"lag":27,"corr":0.131,"n":4122},{"lag":29,"corr":0.124,"n":4122},{"lag":31,"corr":0.12,"n":4118}],"鯉魚潭水庫":[{"lag":1,"corr":0.224,"n":4223},{"lag":3,"corr":0.273,"n":4222},{"lag":5,"corr":0.267,"n":4217},{"lag":7,"corr":0.264,"n":4221},{"lag":9,"corr":0.249,"n":4215},{"lag":11,"corr":0.247,"n":4214},{"lag":13,"corr":0.234,"n":4213},{"lag":15,"corr":0.225,"n":4208},{"lag":17,"corr":0.218,"n":4209},{"lag":19,"corr":0.217,"n":4205},{"lag":21,"corr":0.204,"n":4206},{"lag":23,"corr":0.198,"n":4202},{"lag":25,"corr":0.193,"n":4198},{"lag":27,"corr":0.187,"n":4198},{"lag":29,"corr":0.178,"n":4194},{"lag":31,"corr":0.177,"n":4190}],"德基水庫":[{"lag":1,"corr":0.542,"n":4086},{"lag":3,"corr":0.461,"n":4085},{"lag":5,"corr":0.384,"n":4084},{"lag":7,"corr":0.32,"n":4081},{"lag":9,"corr":0.268,"n":4079},{"lag":11,"corr":0.233,"n":4076},{"lag":13,"corr":0.217,"n":4074},{"lag":15,"corr":0.204,"n":4073},{"lag":17,"corr":0.203,"n":4072},{"lag":19,"corr":0.2,"n":4073},{"lag":21,"corr":0.19,"n":4069},{"lag":23,"corr":0.177,"n":4065},{"lag":25,"corr":0.167,"n":4063},{"lag":27,"corr":0.161,"n":4062},{"lag":29,"corr":0.155,"n":4059},{"lag":31,"corr":0.152,"n":4057}],"日月潭水庫":[{"lag":1,"corr":0.054,"n":4321},{"lag":3,"corr":0.026,"n":4318},{"lag":5,"corr":0.049,"n":4316},{"lag":7,"corr":0.056,"n":4315},{"lag":9,"corr":0.037,"n":4312},{"lag":11,"corr":0.039,"n":4310},{"lag":13,"corr":0.065,"n":4308},{"lag":15,"corr":0.07,"n":4307},{"lag":17,"corr":0.061,"n":4304},{"lag":19,"corr":0.074,"n":4302},{"lag":21,"corr":0.077,"n":4300},{"lag":23,"corr":0.057,"n":4298},{"lag":25,"corr":0.064,"n":4296},{"lag":27,"corr":0.079,"n":4294},{"lag":29,"corr":0.065,"n":4292},{"lag":31,"corr":0.06,"n":4290}],"曾文水庫":[{"lag":1,"corr":0.241,"n":4343},{"lag":3,"corr":0.329,"n":4340},{"lag":5,"corr":0.344,"n":4339},{"lag":7,"corr":0.334,"n":4337},{"lag":9,"corr":0.319,"n":4334},{"lag":11,"corr":0.312,"n":4332},{"lag":13,"corr":0.3,"n":4332},{"lag":15,"corr":0.291,"n":4330},{"lag":17,"corr":0.283,"n":4327},{"lag":19,"corr":0.276,"n":4325},{"lag":21,"corr":0.279,"n":4323},{"lag":23,"corr":0.27,"n":4321},{"lag":25,"corr":0.265,"n":4319},{"lag":27,"corr":0.258,"n":4317},{"lag":29,"corr":0.255,"n":4315},{"lag":31,"corr":0.25,"n":4313}]},"comparison":[{"reservoir":"石門水庫","avg_annual_rain":2225.1,"avg_capacity_rate":78.44,"min_capacity_rate":0.0,"max_capacity_rate":100.0},{"reservoir":"翡翠水庫","avg_annual_rain":3606.4,"avg_capacity_rate":81.39,"min_capacity_rate":0.0,"max_capacity_rate":100.0},{"reservoir":"寶山第二水庫","avg_annual_rain":2237.1,"avg_capacity_rate":81.44,"min_capacity_rate":2.66,"max_capacity_rate":100.0},{"reservoir":"明德水庫","avg_annual_rain":1846.4,"avg_capacity_rate":70.24,"min_capacity_rate":4.7,"max_capacity_rate":100.0},{"reservoir":"鯉魚潭水庫","avg_annual_rain":1937.0,"avg_capacity_rate":78.39,"min_capacity_rate":0.86,"max_capacity_rate":100.0},{"reservoir":"德基水庫","avg_annual_rain":1496.5,"avg_capacity_rate":77.36,"min_capacity_rate":1.1,"max_capacity_rate":100.0},{"reservoir":"日月潭水庫","avg_annual_rain":2061.7,"avg_capacity_rate":90.49,"min_capacity_rate":20.57,"max_capacity_rate":100.0},{"reservoir":"曾文水庫","avg_annual_rain":2828.5,"avg_capacity_rate":56.94,"min_capacity_rate":0.0,"max_capacity_rate":100.0}],"summary":{"date_range":"2014-01-01 ~ 2025-12-31","n_days":4383,"n_reservoirs":8,"extreme_events_top3":[{"reservoir":"日月潭水庫","date":"2024-07-25","rain":591.5},{"reservoir":"曾文水庫","date":"2024-07-25","rain":573.6}],"comparison_driest":"曾文水庫","comparison_fullest":"日月潭水庫","shimen_best_lag":{"lag":5,"corr":0.29,"n":4251}}},"countyCoords":{"基隆市":[256.5,133.1],"臺北市":[244.0,143.0],"新北市":[250.3,145.3],"桃園市":[226.1,155.2],"新竹市":[203.2,168.5],"新竹縣":[215.7,180.7],"苗栗縣":[203.2,196.2],"臺中市":[195.6,236.1],"彰化縣":[173.5,252.8],"南投縣":[205.3,274.9],"雲林縣":[165.9,286.0],"嘉義市":[167.3,316.0],"嘉義縣":[160.4,319.3],"臺南市":[156.9,352.5],"高雄市":[174.2,380.2],"屏東縣":[174.2,419.0],"宜蘭縣":[250.3,186.3],"花蓮縣":[239.9,286.0],"臺東縣":[212.2,380.2],"澎湖縣":[107.1,306.0],"金門縣":[20.0,209.5],"連江縣":[130.6,20.0]}};
+
+const SVGNS='http://www.w3.org/2000/svg';
+function svgEl(t,a){const e=document.createElementNS(SVGNS,t); if(a) for(const k in a) e.setAttribute(k,a[k]); return e;}
+function scaleLinear(d0,d1,r0,r1){const f=v=>r0+(v-d0)/(d1-d0)*(r1-r0); f.invert=px=>d0+(px-r0)/(r1-r0)*(d1-d0); return f;}
+function scaleBand(domain,r0,r1,padding){padding=padding==null?0.3:padding; const step=(r1-r0)/domain.length; const bw=step*(1-padding); const idx={}; domain.forEach((k,i)=>idx[k]=i); const f=key=>r0+idx[key]*step+(step-bw)/2; f.bandwidth=()=>bw; f.step=step; return f;}
+function extent(arr,acc){let mn=Infinity,mx=-Infinity; arr.forEach(d=>{const v=acc(d); if(v!==null&&v!==undefined){if(v<mn)mn=v; if(v>mx)mx=v;}}); return [mn,mx];}
+function containerWidth(id){const el=document.getElementById(id); return Math.max(280, el.clientWidth||el.parentElement.clientWidth||600);}
+function clearSvg(id){document.getElementById(id).innerHTML='';}
+function showTooltip(html,x,y){const tt=document.getElementById('tooltip'); tt.innerHTML=html; tt.style.display='block'; const pad=14; let left=x+pad, top=y+pad; const maxLeft=window.scrollX+window.innerWidth-260; if(left>maxLeft) left=x-250; tt.style.left=left+'px'; tt.style.top=top+'px';}
+function hideTooltip(){document.getElementById('tooltip').style.display='none';}
+function fmt(n,d){d=d==null?1:d; return Number(n).toLocaleString(undefined,{maximumFractionDigits:d});}
+function hexToRgb(hex){ hex=hex.replace('#',''); return [parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)]; }
+function seqColor(t){
+  const c0=[207,224,245], c1=[26,77,143]; // 淺藍 -> 深藍
+  const r = Math.round(c0[0]+(c1[0]-c0[0])*t);
+  const g = Math.round(c0[1]+(c1[1]-c0[1])*t);
+  const b = Math.round(c0[2]+(c1[2]-c0[2])*t);
+  return `rgb(${r},${g},${b})`;
+}
+
+// 簡化版台灣本島輪廓（配合 stationCoords / countyCoords 的 0-300 x 0-500 座標系），
+// 讓下方各張「地圖」有實際的海岸線可以對照，而不是一群漂浮的點。
+const TAIWAN_OUTLINE = 'M272.27,149.58 L269.45,151.19 L266.83,154.90 L264.93,159.39 L263.69,161.42 L262.41,166.65 L261.98,172.29 L263.00,178.73 L263.25,180.04 L263.61,185.79 L265.32,190.93 L266.64,192.06 L265.85,199.28 L263.64,200.85 L263.53,203.33 L264.26,204.77 L262.14,207.38 L261.49,209.59 L260.11,213.27 L258.90,220.41 L258.93,223.57 L257.50,226.56 L256.84,229.54 L254.95,231.59 L251.84,235.69 L250.89,239.45 L251.25,243.59 L248.80,247.10 L247.95,249.78 L248.26,253.13 L249.86,256.35 L248.79,261.87 L247.92,261.46 L247.31,263.71 L247.18,268.36 L246.71,274.32 L245.67,278.44 L244.91,280.86 L244.91,285.45 L243.88,288.82 L243.30,290.41 L243.08,294.47 L242.36,297.74 L241.96,303.22 L240.66,308.17 L240.37,314.44 L239.86,318.73 L238.77,323.76 L238.12,326.44 L237.95,330.22 L237.63,332.50 L236.19,335.04 L234.83,339.80 L234.37,341.57 L234.34,344.19 L232.80,346.22 L232.87,348.98 L233.45,351.29 L232.91,354.29 L233.41,356.42 L231.74,358.69 L229.80,360.43 L229.40,361.88 L228.66,365.48 L227.96,367.58 L227.63,369.95 L225.64,374.29 L224.51,376.85 L223.45,379.44 L221.79,382.60 L219.64,384.41 L218.15,388.17 L219.08,391.85 L217.72,393.31 L216.65,396.81 L215.20,398.66 L212.14,401.90 L209.57,404.48 L207.84,405.76 L206.65,408.10 L205.74,414.78 L203.51,418.64 L202.27,424.10 L199.68,435.88 L198.76,440.22 L197.80,442.93 L197.59,449.27 L198.08,454.56 L197.90,457.48 L197.75,460.90 L197.91,464.42 L197.29,466.43 L198.29,468.35 L197.71,474.52 L197.41,477.16 L196.64,478.83 L195.48,481.04 L194.15,485.56 L195.56,489.15 L195.87,490.80 L194.76,491.50 L194.41,489.58 L192.75,487.29 L190.96,486.43 L188.74,484.54 L187.61,485.60 L187.02,488.18 L186.25,489.05 L185.05,484.00 L185.19,482.16 L183.81,479.72 L183.34,476.37 L184.07,473.91 L184.65,472.16 L185.42,469.67 L184.87,466.41 L184.20,463.37 L183.12,458.03 L182.30,454.85 L181.31,453.09 L180.91,450.28 L180.25,446.58 L177.64,442.03 L176.27,439.05 L170.92,434.32 L165.87,429.06 L165.06,428.04 L161.50,425.53 L158.75,422.19 L157.27,422.91 L156.94,420.63 L157.92,421.47 L156.33,419.31 L153.88,413.26 L153.35,411.50 L152.91,407.84 L153.93,405.13 L153.36,400.48 L149.29,390.71 L149.85,389.07 L148.91,384.91 L147.68,378.93 L147.71,376.56 L146.56,371.92 L143.18,367.04 L139.83,364.23 L138.23,361.58 L137.46,360.79 L138.58,355.92 L139.57,351.95 L140.91,346.92 L141.13,342.80 L142.01,339.72 L143.22,334.75 L143.24,332.36 L144.43,328.86 L146.49,326.39 L146.65,324.14 L145.92,322.28 L145.94,320.18 L145.57,318.19 L146.35,315.50 L144.80,315.05 L143.82,314.24 L144.36,311.49 L145.66,311.42 L145.21,308.21 L145.36,303.51 L144.10,300.22 L144.13,297.87 L145.19,293.32 L145.73,290.83 L147.04,286.93 L146.43,282.21 L148.84,278.47 L149.78,275.14 L150.84,273.16 L151.87,271.05 L153.44,269.49 L153.66,267.24 L154.95,265.56 L155.26,263.24 L156.98,259.78 L158.75,256.81 L159.30,251.69 L160.49,250.11 L162.23,248.64 L163.11,245.34 L164.37,240.89 L165.60,237.68 L167.26,235.40 L168.64,233.50 L170.16,229.12 L171.45,225.29 L172.53,222.86 L173.47,221.26 L174.55,218.53 L177.16,213.19 L179.41,208.78 L182.64,201.37 L183.73,197.57 L184.87,192.90 L186.28,190.71 L187.38,189.50 L188.20,187.31 L190.35,184.49 L195.06,180.57 L196.33,176.59 L197.55,170.66 L199.20,165.20 L199.86,163.69 L201.34,161.05 L202.20,158.37 L203.80,154.27 L204.95,152.21 L205.78,148.84 L206.45,146.70 L208.67,142.80 L211.08,141.36 L213.76,139.12 L217.22,137.25 L219.81,135.45 L221.72,134.82 L224.77,134.58 L225.97,133.78 L229.65,133.06 L232.18,131.28 L232.30,129.05 L234.20,128.00 L233.22,126.62 L234.20,125.58 L235.38,123.61 L237.23,119.73 L238.51,117.65 L241.64,115.97 L242.19,114.75 L244.03,115.32 L245.25,114.55 L247.34,116.50 L249.18,118.87 L250.29,122.99 L251.84,125.28 L253.33,125.33 L253.24,127.72 L254.43,128.12 L255.40,129.39 L258.32,129.58 L260.25,131.42 L260.95,132.61 L262.23,132.63 L263.63,133.42 L266.10,133.85 L267.99,133.93 L269.51,135.73 L268.68,137.76 L269.45,139.73 L269.68,143.17 L270.95,145.37 L274.57,145.55 L274.88,147.49 L273.51,148.76 L272.27,149.58 Z M240.22,470.69 L240.83,471.18 L243.52,470.93 L244.07,471.19 L244.53,470.76 L244.84,472.92 L244.34,474.11 L244.64,475.57 L245.38,476.50 L246.62,477.29 L247.07,478.05 L246.38,479.90 L244.76,479.66 L244.23,478.18 L243.30,477.25 L242.59,477.39 L240.66,474.60 L240.51,472.32 L239.85,471.17 L240.22,470.69 Z M141.15,311.06 L141.83,311.49 L142.02,312.55 L141.32,312.41 L140.29,313.48 L139.73,315.98 L139.24,315.57 L138.66,316.24 L137.58,315.98 L137.10,316.94 L137.22,318.13 L135.82,318.11 L135.29,317.51 L135.54,316.72 L136.63,315.46 L138.15,314.08 L139.95,312.07 L141.15,311.06 Z M239.30,405.02 L240.58,405.06 L240.50,407.63 L239.85,408.53 L240.21,409.37 L239.56,410.00 L238.91,408.73 L238.04,408.45 L238.17,407.10 L237.47,405.79 L237.50,405.14 L238.49,405.40 L239.30,405.02 Z M161.94,440.53 L162.60,441.25 L162.46,442.11 L160.57,444.27 L160.14,443.46 L160.80,442.29 L160.64,441.64 L161.10,440.95 L161.94,440.53 Z M377.36,64.56 L378.10,64.82 L378.23,65.85 L377.39,65.73 L376.51,66.43 L376.18,65.40 L377.36,64.56 Z M271.84,164.90 L272.21,165.55 L271.02,165.96 L270.47,165.60 L270.98,164.19 L271.84,164.90 Z M142.42,309.12 L143.21,310.34 L142.97,310.68 L141.85,310.27 L142.42,309.12 Z';
+function drawTaiwanOutline(svg){
+  svg.appendChild(svgEl('path',{
+    d: TAIWAN_OUTLINE, fill:'var(--surface-2)', stroke:'var(--text-muted)', 'stroke-width':1.4, opacity:1
+  }));
+}
+
+let currentStation = DATA.floodSummary.top_station.station;
+let currentTab = 'flood';
+let currentReservoir = '石門水庫';
+
+// ============ Layers & Tabs ============
+const LAYERS = [
+  {id:'immediate', label:'即時反應', sub:'當天～數天內', desc:'降雨發生的當下或幾天內就能觀察到的影響', color:'var(--layer-immediate)', tabs:['pm25','traffic','flood']},
+  {id:'short_delay', label:'短延遲反應', sub:'數天內', desc:'需要幾天時間累積、傳導才會顯現的影響', color:'var(--layer-short)', tabs:['reservoir','veg']},
+  {id:'medium_delay', label:'中延遲反應', sub:'2-3個月', desc:'透過生態或生物過程，延後數月才爆發的影響', color:'var(--layer-medium)', tabs:['dengue']},
+  {id:'cumulative', label:'累積效應', sub:'全年/多年', desc:'長期累積、以年為單位才看得出全貌的影響', color:'var(--layer-cumulative)', tabs:['agri']},
+];
+const TAB_LABELS = {
+  pm25:'空氣品質 PM2.5', traffic:'交通事故', flood:'排水淹水',
+  reservoir:'水庫蓄水', veg:'颱風菜價', dengue:'登革熱疫情', agri:'農業損失',
+};
+
+function renderLayerTimeline(){
+  document.getElementById('layerTimeline').innerHTML = LAYERS.map(l=>`
+    <div class="layer-tile" style="border-left-color:${l.color}">
+      <div class="layer-label">${l.label}</div>
+      <div class="layer-sub">${l.sub}</div>
+      <div class="layer-desc">${l.desc}</div>
+    </div>
+  `).join('');
+}
+
+function renderTabBar(){
+  document.getElementById('tabBar').innerHTML = LAYERS.map(l => `
+    <div class="layer-group">
+      <div class="layer-group-head">
+        <span class="dot" style="background:${l.color}"></span>
+        <span class="name">${l.label}</span>
+        <span class="sub">${l.sub}</span>
+      </div>
+      <div class="tabs">
+        ${l.tabs.map(t=>`<button class="tab-btn ${t===currentTab?'active':''}" data-tab="${t}">${TAB_LABELS[t]}</button>`).join('')}
+      </div>
+    </div>
+  `).join('');
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ currentTab = btn.dataset.tab; renderTabBar(); renderOverlayPanel(); });
+  });
+}
+
+// ============ Framing & Stats ============
+function buildFraming(){
+  const s = DATA.floodSummary;
+  document.getElementById('framingText').innerHTML =
+    `以全台 ${s.n_stations} 個氣象測站的降雨資料為核心，依「即時反應→短延遲→中延遲→累積效應」四層時間軸，疊加交通、空氣品質、水庫、農損、疫情、菜價共七個維度，取代過去各自獨立的分析圖表。`;
+}
+function buildStats(){
+  const s = DATA.floodSummary;
+  const tiles = [
+    {label:'比對氣象測站數', value:s.n_stations, note:'署屬有人站'},
+    {label:'單日最大降雨相關係數', value:s.r_max_daily_rain, note:'與淹水點位，弱到中度正相關'},
+    {label:'PM2.5相關係數', value:DATA.pm25.summary.correlation, note:'降雨越多，PM2.5越低'},
+    {label:'水庫蓄水最佳延遲', value:DATA.reservoir.summary.shimen_best_lag.lag+' 天', note:'石門水庫，r='+DATA.reservoir.summary.shimen_best_lag.corr},
+    {label:'登革熱季節集中度', value:DATA.dengue.summary.peak_months_pct+'%', note:'集中在9-11月'},
+  ];
+  document.getElementById('statRow').innerHTML = tiles.map(t=>`<div class="stat-tile"><div class="label">${t.label}</div><div class="value">${t.value}</div><div class="note">${t.note}</div></div>`).join('');
+}
+
+// ============ Core: Station Map ============
+const REGION_COLORS = {'北部':'var(--series-1)','中部':'var(--series-2)','南部':'var(--series-3)','東部':'var(--series-4)','離島':'var(--series-5)'};
+function stationAgg(station){ return DATA.core.filter(r=>r.station===station); }
+function stationTotals(){
+  const byStation = {};
+  DATA.core.forEach(r=>{
+    if(!byStation[r.station]) byStation[r.station] = {flood:0,n:0};
+    byStation[r.station].flood += r.flood_count;
+    byStation[r.station].n++;
+  });
+  return byStation;
+}
+function regionAvgRain(){
+  const byRegion = {};
+  DATA.core.forEach(r=>{
+    const region = (DATA.stationCoords[r.station]||{}).region || '其他';
+    if(!byRegion[region]) byRegion[region] = {sum:0,n:0};
+    byRegion[region].sum += r.total_rain; byRegion[region].n++;
+  });
+  const out = {};
+  Object.entries(byRegion).forEach(([k,v])=>{ out[k] = v.sum/v.n; });
+  return out;
+}
+function renderMap(){
+  clearSvg('stationMap');
+  const width = containerWidth('stationMap');
+  const height = width * 500/300;
+  const svg = svgEl('svg',{width, height, viewBox:`0 0 300 500`});
+  document.getElementById('stationMap').appendChild(svg);
+  drawTaiwanOutline(svg);
+  const totals = stationTotals();
+  const floodVals = Object.values(totals).map(v=>v.flood);
+  const [,fMax] = extent(floodVals.map(v=>({v})), d=>d.v);
+  const rScale = scaleLinear(0, Math.sqrt(fMax||1), 3.5, 15);
+  Object.entries(DATA.stationCoords).forEach(([name,info])=>{
+    const {x,y,region} = info;
+    const t = totals[name] || {flood:0};
+    const r = rScale(Math.sqrt(t.flood));
+    const isActive = name === currentStation;
+    const c = svgEl('circle', {
+      cx:x, cy:y, r: isActive ? r+2.5 : r,
+      fill: REGION_COLORS[region] || 'var(--text-muted)',
+      opacity: isActive ? 1 : 0.7,
+      stroke: isActive ? 'var(--text-primary)' : 'none',
+      'stroke-width': isActive ? 2 : 0,
+      class:'station-dot'
+    });
+    const tt = ()=>`<b>${name}</b>（${region}）<br>淹水通報點位：${fmt(t.flood,0)}`;
+    c.addEventListener('mouseenter', (e)=>showTooltip(tt(), e.pageX, e.pageY));
+    c.addEventListener('mousemove', (e)=>showTooltip(tt(), e.pageX, e.pageY));
+    c.addEventListener('mouseleave', hideTooltip);
+    c.addEventListener('click', ()=>{ currentStation = name; hideTooltip(); renderAll(); });
+    svg.appendChild(c);
+  });
+  // 地區圖例 + 各地區平均年雨量
+  const avgs = regionAvgRain();
+  const legendEl = document.getElementById('mapRegionLegend');
+  if(legendEl){
+    legendEl.innerHTML = Object.entries(REGION_COLORS).map(([name,color])=>
+      `<div class="legend-item"><span class="legend-dot" style="background:${color}"></span>${name}（平均${fmt(avgs[name]||0,0)}mm/年）</div>`
+    ).join('');
+  }
+}
+
+// ============ Core: Yearly Trend Chart ============
+function renderCoreChart(){
+  clearSvg('coreChart');
+  document.getElementById('currentStationLabel').textContent = currentStation;
+  const width = containerWidth('coreChart'); const height = 300;
+  const margin = {top:16,right:44,bottom:32,left:52};
+  const iw = width-margin.left-margin.right, ih = height-margin.top-margin.bottom;
+  const rows = stationAgg(currentStation).sort((a,b)=>a.year-b.year);
+  const svg = svgEl('svg',{width,height});
+  const g = svgEl('g',{transform:`translate(${margin.left},${margin.top})`});
+  svg.appendChild(g); document.getElementById('coreChart').appendChild(svg);
+  if(rows.length===0){ return; }
+  const years = rows.map(r=>r.year);
+  const x = scaleBand(years, 0, iw, 0.35);
+  const [,rainMax] = extent(rows, d=>d.total_rain);
+  const y1 = scaleLinear(0, rainMax*1.15, ih, 0);
+  const [,maxDailyMax] = extent(rows, d=>d.max_daily_rain);
+  const y2 = scaleLinear(0, maxDailyMax*1.2, ih, 0);
+  [0,0.25,0.5,0.75,1].forEach(f=>{
+    const yy = ih - f*ih;
+    g.appendChild(svgEl('line',{x1:0,x2:iw,y1:yy,y2:yy,stroke:'var(--gridline)','stroke-width':1}));
+  });
+  rows.forEach(r=>{
+    const bx = x(r.year), bw = x.bandwidth();
+    const by = y1(r.total_rain);
+    const rect = svgEl('rect',{x:bx,y:by,width:bw,height:ih-by, fill:'var(--series-1)', opacity:0.85, rx:2});
+    const tt = ()=>`<b>${r.year}</b><br>年總雨量：${fmt(r.total_rain)} mm<br>單日最大：${fmt(r.max_daily_rain)} mm<br>淹水點位：${fmt(r.flood_count,0)}`;
+    rect.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    rect.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    rect.addEventListener('mouseleave',hideTooltip);
+    g.appendChild(rect);
+  });
+  let pathD = '';
+  rows.forEach((r,i)=>{ const cx = x(r.year)+x.bandwidth()/2, cy = y2(r.max_daily_rain); pathD += (i===0?'M':'L') + cx + ',' + cy + ' '; });
+  g.appendChild(svgEl('path',{d:pathD, fill:'none', stroke:'var(--series-3)', 'stroke-width':2.5}));
+  rows.forEach(r=>{ const cx = x(r.year)+x.bandwidth()/2, cy = y2(r.max_daily_rain); g.appendChild(svgEl('circle',{cx,cy,r:4,fill:'var(--series-3)'})); });
+  if(typeof liveRain !== 'undefined' && liveRain[currentStation]){
+    const liveVal = liveRain[currentStation].precipitation;
+    const historicalVals = rows.map(r=>r.max_daily_rain);
+    const combined = [...historicalVals, liveVal].sort((a,b)=>b-a);
+    const rank = combined.indexOf(liveVal) + 1;
+    if(liveVal <= maxDailyMax*1.2){
+      const ly = y2(liveVal);
+      g.appendChild(svgEl('line',{
+        x1:0, x2:iw, y1:ly, y2:ly,
+        stroke:'var(--critical)', 'stroke-width':1.5, 'stroke-dasharray':'5,3'
+      }));
+      const label = svgEl('text',{x:iw, y:ly-6, 'text-anchor':'end','font-size':10,fill:'var(--critical)'});
+      label.textContent = `今日即時 ${liveVal.toFixed(1)}mm（含今日，近${combined.length}筆單日最大紀錄中排第${rank}）`;
+      g.appendChild(label);
+    } else {
+      const label = svgEl('text',{x:iw, y:12, 'text-anchor':'end','font-size':10,fill:'var(--critical)'});
+      label.textContent = `⚠️ 今日即時 ${liveVal.toFixed(1)}mm，已超出座標軸範圍（近${combined.length}筆單日最大紀錄中排第${rank}），代表雨量非常大`;
+      g.appendChild(label);
+    }
+  }
+  years.forEach(yr=>{
+    const t = svgEl('text',{x:x(yr)+x.bandwidth()/2, y:ih+18, 'text-anchor':'middle','font-size':11,fill:'var(--text-secondary)'});
+    t.textContent = yr; g.appendChild(t);
+  });
+  [0,0.5,1].forEach(f=>{
+    const val = rainMax*1.15*f;
+    const t = svgEl('text',{x:-8,y:ih-f*ih+4,'text-anchor':'end','font-size':10,fill:'var(--text-secondary)'});
+    t.textContent = fmt(val,0); g.appendChild(t);
+  });
+}
+
+// ============ Overlay dispatcher ============
+function panelShell(title, desc, chartId, statHtml, caveat){
+  return `
+    <p style="font-size:13px;color:var(--text-secondary);margin:0 0 10px;"><strong style="color:var(--text-primary)">${title}</strong>　${desc}</p>
+    ${statHtml||''}
+    <div id="${chartId}"></div>
+    ${caveat? `<div class="caveat">${caveat}</div>` : ''}
+  `;
+}
+function renderOverlayPanel(){
+  const panel = document.getElementById('overlayPanel');
+  if(currentTab==='flood') renderFloodPanel(panel);
+  else if(currentTab==='pm25') renderPM25Panel(panel);
+  else if(currentTab==='agri') renderAgriPanel(panel);
+  else if(currentTab==='dengue') renderDenguePanel(panel);
+  else if(currentTab==='veg') renderVegPanel(panel);
+  else if(currentTab==='traffic') renderTrafficPanel(panel);
+  else if(currentTab==='reservoir') renderReservoirPanel(panel);
+}
+
+// ---- Flood ----
+function renderFloodPanel(panel){
+  const s = DATA.floodSummary;
+  panel.innerHTML = panelShell(
+    '單日最大降雨 vs 淹水通報點位',
+    `相關係數 r=${s.r_max_daily_rain}（弱到中度正相關）。年總雨量與淹水幾乎無關(r=${s.r_total_rain})，故此分頁只保留有分析價值的「單日最大降雨」角度。`,
+    'floodChart', '',
+    '淹水資料僅有年份、以最近測站配對，粒度較粗；都會區通報密度也受人口影響，非純物理淹水頻率。'
+  );
+  const width = containerWidth('floodChart'); const height=340;
+  const margin={top:16,right:20,bottom:36,left:52};
+  const iw=width-margin.left-margin.right, ih=height-margin.top-margin.bottom;
+  const data = DATA.core;
+  const svg=svgEl('svg',{width,height}); const g=svgEl('g',{transform:`translate(${margin.left},${margin.top})`});
+  svg.appendChild(g); panel.querySelector('#floodChart').appendChild(svg);
+  const [,xMax]=extent(data,d=>d.max_daily_rain);
+  const [,yMax]=extent(data,d=>d.flood_count);
+  const x=scaleLinear(0,xMax*1.08,0,iw); const y=scaleLinear(0,yMax*1.1,ih,0);
+  [0,0.25,0.5,0.75,1].forEach(f=>g.appendChild(svgEl('line',{x1:0,x2:iw,y1:ih-f*ih,y2:ih-f*ih,stroke:'var(--gridline)','stroke-width':1})));
+  data.forEach(d=>{
+    const cx=x(d.max_daily_rain), cy=y(d.flood_count);
+    const isCur = d.station===currentStation;
+    const c=svgEl('circle',{cx,cy,r:isCur?6:4, fill: isCur?'var(--series-3)':'var(--series-1)', opacity:isCur?0.95:0.55});
+    const tt=()=>`<b>${d.station} ${d.year}</b><br>單日最大：${fmt(d.max_daily_rain)} mm<br>淹水點位：${fmt(d.flood_count,0)}`;
+    c.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    c.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    c.addEventListener('mouseleave',hideTooltip);
+    g.appendChild(c);
+  });
+  [0,0.5,1].forEach(f=>{
+    g.appendChild(Object.assign(svgEl('text',{x:-8,y:ih-f*ih+4,'text-anchor':'end','font-size':10,fill:'var(--text-secondary)'}),{textContent:fmt(yMax*1.1*f,0)}));
+    g.appendChild(Object.assign(svgEl('text',{x:f*iw,y:ih+18,'text-anchor':'middle','font-size':10,fill:'var(--text-secondary)'}),{textContent:fmt(xMax*1.08*f,0)}));
+  });
+  g.appendChild(Object.assign(svgEl('text',{x:iw/2,y:ih+32,'text-anchor':'middle','font-size':11,fill:'var(--text-secondary)'}),{textContent:'單日最大降雨 (mm)　→'}));
+}
+
+// ---- PM2.5 ----
+function renderPM25Panel(panel){
+  const s = DATA.pm25.summary;
+  panel.innerHTML = panelShell(
+    '降雨 vs PM2.5 月均濃度',
+    `相關係數 r=${s.correlation}（中高度負相關）。重疊區間 ${s.overlap_range}，共${s.n_months}個月。`,
+    'pm25Chart', '',
+    `PM2.5來自${s.n_stations}個測站月均值；相關性反映「雨水洗刷懸浮微粒」的物理機制，非降雨主動控制空品的因果宣稱。`
+  );
+  const width = containerWidth('pm25Chart'); const height=300;
+  const margin={top:16,right:44,bottom:36,left:44};
+  const iw=width-margin.left-margin.right, ih=height-margin.top-margin.bottom;
+  const rows = DATA.pm25.merged;
+  const svg=svgEl('svg',{width,height}); const g=svgEl('g',{transform:`translate(${margin.left},${margin.top})`});
+  svg.appendChild(g); panel.querySelector('#pm25Chart').appendChild(svg);
+  const x = scaleBand(rows.map(r=>r.label), 0, iw, 0.4);
+  const [,rainMax] = extent(rows, d=>d.rain);
+  const [,pmMax] = extent(rows, d=>d.pm25);
+  const y1 = scaleLinear(0, rainMax*1.15, ih, 0);
+  const y2 = scaleLinear(0, pmMax*1.2, ih, 0);
+  [0,0.25,0.5,0.75,1].forEach(f=>g.appendChild(svgEl('line',{x1:0,x2:iw,y1:ih-f*ih,y2:ih-f*ih,stroke:'var(--gridline)','stroke-width':1})));
+  rows.forEach(r=>{
+    const bx=x(r.label), bw=x.bandwidth(), by=y1(r.rain);
+    const rect = svgEl('rect',{x:bx,y:by,width:bw,height:ih-by,fill:'var(--series-1)',opacity:0.8});
+    const tt=()=>`<b>${r.label}</b><br>雨量：${fmt(r.rain)} mm<br>PM2.5：${fmt(r.pm25)}`;
+    rect.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    rect.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    rect.addEventListener('mouseleave',hideTooltip);
+    g.appendChild(rect);
+  });
+  let pathD='';
+  rows.forEach((r,i)=>{ const cx=x(r.label)+x.bandwidth()/2, cy=y2(r.pm25); pathD += (i===0?'M':'L')+cx+','+cy+' '; });
+  g.appendChild(svgEl('path',{d:pathD,fill:'none',stroke:'var(--series-3)','stroke-width':2}));
+  const tickEvery = Math.ceil(rows.length/8);
+  rows.forEach((r,i)=>{ if(i%tickEvery===0) g.appendChild(Object.assign(svgEl('text',{x:x(r.label)+x.bandwidth()/2,y:ih+16,'text-anchor':'middle','font-size':9,fill:'var(--text-secondary)'}),{textContent:r.label})); });
+  // 左軸：雨量(mm，長條)；右軸：PM2.5(折線) —— 補上原本缺少的座標軸數字
+  [0,0.5,1].forEach(f=>g.appendChild(Object.assign(svgEl('text',{x:-8,y:ih-f*ih+4,'text-anchor':'end','font-size':10,fill:'var(--text-secondary)'}),{textContent:fmt(rainMax*1.15*f,0)})));
+  [0,0.5,1].forEach(f=>g.appendChild(Object.assign(svgEl('text',{x:iw+8,y:ih-f*ih+4,'text-anchor':'start','font-size':10,fill:'var(--series-3)'}),{textContent:fmt(pmMax*1.2*f,0)})));
+  const legendDiv = document.createElement('div');
+  legendDiv.className = 'legend-row';
+  legendDiv.innerHTML = `<div class="legend-item"><span class="legend-dot" style="background:var(--series-1)"></span>月雨量 mm（左軸，長條）</div><div class="legend-item"><span class="legend-line" style="background:var(--series-3)"></span>PM2.5 月均濃度（右軸，折線）</div>`;
+  panel.querySelector('#pm25Chart').appendChild(legendDiv);
+}
+
+// ---- Agriculture ----
+function renderAgriPanel(panel){
+  const s = DATA.agri.summary;
+  const topEvents = DATA.agri.top_events;
+  panel.innerHTML = panelShell(
+    '逐年農業天然災害損失',
+    `1994–2024年共${s.total_events}起事件，累計損失${fmt(s.total_loss_all,0)}百萬元，其中<strong>${s.rain_pct}%</strong>與降雨相關（颱風/豪雨）。`,
+    'agriChart',
+    `<table class="mini"><tr><th>事件</th><th>年份</th><th>損失(百萬元)</th></tr>${topEvents.map(e=>`<tr><td>${e.name}</td><td>${e.year}</td><td>${fmt(e.total_loss,0)}</td></tr>`).join('')}</table>`,
+    '損失金額為農業部逐事件通報加總，未依通膨調整；不同年代的申報基準可能略有差異。'
+  );
+  const width = containerWidth('agriChart'); const height=280;
+  const margin={top:16,right:20,bottom:32,left:52};
+  const iw=width-margin.left-margin.right, ih=height-margin.top-margin.bottom;
+  const rows = DATA.agri.yearly.sort((a,b)=>a.year-b.year);
+  const svg=svgEl('svg',{width,height}); const g=svgEl('g',{transform:`translate(${margin.left},${margin.top})`});
+  svg.appendChild(g); panel.querySelector('#agriChart').appendChild(svg);
+  const x = scaleBand(rows.map(r=>r.year), 0, iw, 0.25);
+  const [,yMax] = extent(rows, d=>d.total_loss);
+  const y = scaleLinear(0, yMax*1.1, ih, 0);
+  [0,0.5,1].forEach(f=>g.appendChild(svgEl('line',{x1:0,x2:iw,y1:ih-f*ih,y2:ih-f*ih,stroke:'var(--gridline)','stroke-width':1})));
+  rows.forEach(r=>{
+    const bx=x(r.year), bw=x.bandwidth(), by=y(r.total_loss);
+    const rect = svgEl('rect',{x:bx,y:by,width:bw,height:ih-by,fill:'var(--series-2)',opacity:0.85});
+    const tt=()=>`<b>${r.year}</b><br>損失：${fmt(r.total_loss,0)} 百萬元`;
+    rect.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    rect.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    rect.addEventListener('mouseleave',hideTooltip);
+    g.appendChild(rect);
+  });
+  const tickEvery = Math.ceil(rows.length/10);
+  rows.forEach((r,i)=>{ if(i%tickEvery===0) g.appendChild(Object.assign(svgEl('text',{x:x(r.year)+x.bandwidth()/2,y:ih+16,'text-anchor':'middle','font-size':9,fill:'var(--text-secondary)'}),{textContent:r.year})); });
+  [0,0.5,1].forEach(f=>g.appendChild(Object.assign(svgEl('text',{x:-8,y:ih-f*ih+4,'text-anchor':'end','font-size':10,fill:'var(--text-secondary)'}),{textContent:fmt(yMax*1.1*f,0)})));
+}
+
+// ---- Dengue ----
+function renderDenguePanel(panel){
+  const s = DATA.dengue.summary;
+  panel.innerHTML = panelShell(
+    '登革熱月份季節分布',
+    `1998–2024累計${fmt(s.total_cases,0)}例，其中<strong>${s.peak_months_pct}%</strong>集中在雨季後段(9–11月)，與降雨帶動病媒蚊孳生的時序吻合。`,
+    'dengueChart', '',
+    `最大流行年為${s.biggest_year.year}年（${fmt(s.biggest_year.cases,0)}例）。此處僅呈現時間相關性，非直接降雨數值比對；病媒蚊孳生也受氣溫、積水管理等因素共同影響。`
+  );
+  const width = containerWidth('dengueChart'); const height=280;
+  const margin={top:16,right:20,bottom:32,left:52};
+  const iw=width-margin.left-margin.right, ih=height-margin.top-margin.bottom;
+  const rows = DATA.dengue.season;
+  const svg=svgEl('svg',{width,height}); const g=svgEl('g',{transform:`translate(${margin.left},${margin.top})`});
+  svg.appendChild(g); panel.querySelector('#dengueChart').appendChild(svg);
+  const x = scaleBand(rows.map(r=>r.month), 0, iw, 0.3);
+  const [,yMax] = extent(rows, d=>d.cases);
+  const y = scaleLinear(0, yMax*1.15, ih, 0);
+  [0,0.5,1].forEach(f=>g.appendChild(svgEl('line',{x1:0,x2:iw,y1:ih-f*ih,y2:ih-f*ih,stroke:'var(--gridline)','stroke-width':1})));
+  rows.forEach(r=>{
+    const isPeak = [9,10,11].includes(r.month);
+    const bx=x(r.month), bw=x.bandwidth(), by=y(r.cases);
+    const rect = svgEl('rect',{x:bx,y:by,width:bw,height:ih-by,fill: isPeak?'var(--series-3)':'var(--series-4)',opacity:0.85});
+    const tt=()=>`<b>${r.month}月</b><br>累計病例：${fmt(r.cases,0)}<br>占比：${r.pct}%`;
+    rect.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    rect.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    rect.addEventListener('mouseleave',hideTooltip);
+    g.appendChild(rect);
+  });
+  rows.forEach(r=>g.appendChild(Object.assign(svgEl('text',{x:x(r.month)+x.bandwidth()/2,y:ih+16,'text-anchor':'middle','font-size':10,fill:'var(--text-secondary)'}),{textContent:r.month})));
+  [0,0.5,1].forEach(f=>g.appendChild(Object.assign(svgEl('text',{x:-8,y:ih-f*ih+4,'text-anchor':'end','font-size':10,fill:'var(--text-secondary)'}),{textContent:fmt(yMax*1.15*f,0)})));
+
+  // ---- 縣市地理分布：累積病例數(1998-2024) ----
+  const mapWrap = document.createElement('div');
+  mapWrap.style.marginTop = '20px';
+  mapWrap.innerHTML = `<p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px;"><strong style="color:var(--text-primary)">地理分布：</strong>各縣市累積病例數（點越大＝病例越多；因高雄/臺南數量懸殊，改用平方根比例呈現，讓其他縣市仍可辨識）</p><div id="dengueCountyMap"></div>`;
+  panel.querySelector('#dengueChart').appendChild(mapWrap);
+
+  const countyRows = DATA.dengue.county_ranking;
+  const [,caseMax] = extent(countyRows, d=>d.cases);
+  const dRScale = scaleLinear(0, Math.sqrt(caseMax||1), 3, 26);
+  const mw = Math.min(containerWidth('dengueChart'), 480);
+  const mh = mw * 500/300;
+  const msvg = svgEl('svg',{width:mw, height:mh, viewBox:'0 0 300 500'});
+  mapWrap.querySelector('#dengueCountyMap').appendChild(msvg);
+  drawTaiwanOutline(msvg);
+  countyRows.forEach(r=>{
+    const coord = DATA.countyCoords[r.county];
+    if(!coord) return;
+    const rr = dRScale(Math.sqrt(r.cases));
+    const c = svgEl('circle', {cx:coord[0], cy:coord[1], r:rr, fill:'var(--series-3)', opacity:0.7, stroke:'var(--surface-1)', 'stroke-width':1});
+    const tt = ()=>`<b>${r.county}</b><br>累積病例：${fmt(r.cases,0)}`;
+    c.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    c.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    c.addEventListener('mouseleave',hideTooltip);
+    msvg.appendChild(c);
+  });
+  const legendWrap = document.createElement('div');
+  legendWrap.className = 'legend-row';
+  legendWrap.innerHTML = `<div class="legend-item">高雄市/臺南市合計佔全國約${fmt((countyRows.find(r=>r.county==='高雄市').cases+countyRows.find(r=>r.county==='臺南市').cases)/DATA.dengue.summary.total_cases*100,0)}%，長年為登革熱重災區，與當地氣候溫暖潮濕、病媒蚊密度較高有關</div>`;
+  mapWrap.appendChild(legendWrap);
+}
+
+// ---- Vegetable Price ----
+function renderVegPanel(panel){
+  const s = DATA.veg.summary;
+  panel.innerHTML = panelShell(
+    '颱風前後蔬菜均價變化',
+    `以3次颱風事件(${s.typhoons.map(t=>t.name).join('、')})比對前後均價漲跌幅。最大單一漲幅：${s.biggest_mover.crop} +${s.biggest_mover.pct_change}%（${s.biggest_mover.typhoon}颱風）。`,
+    'vegChart', '',
+   `t檢定顯示10種作物中，僅蕹菜、青江白菜、青蔥的價格變化達統計顯著(p<0.05)，其餘7種(含${s.most_stable_example.crop})證據不足，可能僅為市場正常波動，不宜逐一強調個別漲跌幅。`
+  );
+  const width = containerWidth('vegChart'); const height=340;
+  const margin={top:16,right:20,bottom:70,left:52};
+  const iw=width-margin.left-margin.right, ih=height-margin.top-margin.bottom;
+  const rows = DATA.veg.impact_table;
+  const typhoons = [...new Set(rows.map(r=>r.typhoon))];
+  const colors = {[typhoons[0]]:'var(--series-1)', [typhoons[1]]:'var(--series-2)', [typhoons[2]]:'var(--series-3)'};
+  const svg=svgEl('svg',{width,height}); const g=svgEl('g',{transform:`translate(${margin.left},${margin.top})`});
+  svg.appendChild(g); panel.querySelector('#vegChart').appendChild(svg);
+  const crops = DATA.veg.crops;
+  const x0 = scaleBand(crops, 0, iw, 0.25);
+  const x1 = scaleBand(typhoons, 0, x0.bandwidth(), 0.15);
+  const [yMin,yMax] = extent(rows, d=>d.pct_change);
+  const y = scaleLinear(Math.min(0,yMin*1.1), yMax*1.15, ih, 0);
+  g.appendChild(svgEl('line',{x1:0,x2:iw,y1:y(0),y2:y(0),stroke:'var(--baseline)','stroke-width':1.5}));
+  crops.forEach(crop=>{
+    typhoons.forEach(ty=>{
+      const row = rows.find(r=>r.crop===crop && r.typhoon===ty);
+      if(!row) return;
+      const bx = x0(crop)+x1(ty), bw = x1.bandwidth();
+      const val = row.pct_change;
+      const by = val>=0? y(val) : y(0);
+      const bh = Math.abs(y(val)-y(0));
+      const rect = svgEl('rect',{x:bx,y:by,width:bw,height:Math.max(bh,1),fill:colors[ty],opacity:0.88});
+      const tt=()=>`<b>${crop}</b> · ${ty}颱風<br>漲跌幅：${val>0?'+':''}${fmt(val)}%<br>${fmt(row.pre_price)} → ${fmt(row.post_price)} 元/公斤`;
+      rect.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+      rect.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+      rect.addEventListener('mouseleave',hideTooltip);
+      g.appendChild(rect);
+    });
+  });
+  crops.forEach(crop=>{
+    const t = svgEl('text',{x:x0(crop)+x0.bandwidth()/2, y:ih+16, 'text-anchor':'end','font-size':10,fill:'var(--text-secondary)', transform:`rotate(-40 ${x0(crop)+x0.bandwidth()/2} ${ih+16})`});
+    t.textContent = crop; g.appendChild(t);
+  });
+  let lx = 0;
+  typhoons.forEach(ty=>{
+    g.appendChild(svgEl('rect',{x:lx,y:-24,width:10,height:10,fill:colors[ty]}));
+    const lt = svgEl('text',{x:lx+14,y:-15,'font-size':11,fill:'var(--text-secondary)'}); lt.textContent = ty+'颱風';
+    g.appendChild(lt);
+    lx += (ty.length*11+40);
+  });
+}
+  
+
+// ---- Traffic ----
+function renderTrafficPanel(panel){
+  const s = DATA.traffic.summary;
+  panel.innerHTML = panelShell(
+    '降雨 vs 交通事故（雨天占比）',
+    `2022–2025年，全部事故中約<strong>${s.overall_rain_share}%</strong>發生在雨天。5月梅雨季占比最高(${s.top_month.rain_share}%)，${s.top_county.county}是雨天占比最高的縣市(${s.top_county.rain_share}%)。`,
+    'trafficChart', '',
+  `雨天事故的死亡占比(${(s.class_compare.fatal_share_rain*100).toFixed(1)}%)與晴天(${(s.class_compare.fatal_share_nonrain*100).toFixed(1)}%)接近，卡方檢定顯示此差異未達統計顯著(χ²=1.43, p=0.23)，無法證實下雨會影響死亡率，僅供參考。資料含天氣欄位僅2022–2025年，2013–2021年僅有總事故數。`
+  );
+  const width = containerWidth('trafficChart'); const height=280;
+  const margin={top:16,right:20,bottom:32,left:52};
+  const iw=width-margin.left-margin.right, ih=height-margin.top-margin.bottom;
+  const rows = DATA.traffic.season;
+  const svg=svgEl('svg',{width,height}); const g=svgEl('g',{transform:`translate(${margin.left},${margin.top})`});
+  svg.appendChild(g); panel.querySelector('#trafficChart').appendChild(svg);
+  const x = scaleBand(rows.map(r=>r.month), 0, iw, 0.3);
+  const [,yMax] = extent(rows, d=>d.rain_share);
+  const y = scaleLinear(0, yMax*1.2, ih, 0);
+  [0,0.5,1].forEach(f=>g.appendChild(svgEl('line',{x1:0,x2:iw,y1:ih-f*ih,y2:ih-f*ih,stroke:'var(--gridline)','stroke-width':1})));
+  rows.forEach(r=>{
+    const bx=x(r.month), bw=x.bandwidth(), by=y(r.rain_share);
+    const rect = svgEl('rect',{x:bx,y:by,width:bw,height:ih-by,fill:'var(--series-1)',opacity:0.85});
+    const tt=()=>`<b>${r.month}月</b><br>雨天事故占比：${fmt(r.rain_share)}%<br>雨天事故數：${fmt(r.rain,0)}`;
+    rect.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    rect.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    rect.addEventListener('mouseleave',hideTooltip);
+    g.appendChild(rect);
+  });
+  rows.forEach(r=>g.appendChild(Object.assign(svgEl('text',{x:x(r.month)+x.bandwidth()/2,y:ih+16,'text-anchor':'middle','font-size':10,fill:'var(--text-secondary)'}),{textContent:r.month})));
+  [0,0.5,1].forEach(f=>g.appendChild(Object.assign(svgEl('text',{x:-8,y:ih-f*ih+4,'text-anchor':'end','font-size':10,fill:'var(--text-secondary)'}),{textContent:fmt(yMax*1.2*f)+'%'})));
+
+  // ---- 縣市地理分布：雨天事故占比 ----
+  const mapWrap = document.createElement('div');
+  mapWrap.style.marginTop = '20px';
+  mapWrap.innerHTML = `<p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px;"><strong style="color:var(--text-primary)">地理分布：</strong>各縣市雨天事故占比（顏色越深＝占比越高）</p><div id="trafficCountyMap"></div>`;
+  panel.querySelector('#trafficChart').appendChild(mapWrap);
+
+  const countyRows = DATA.traffic.county_by_share;
+  const [csMin, csMax] = extent(countyRows, d=>d.rain_share);
+  const mw = Math.min(containerWidth('trafficChart'), 480);
+  const mh = mw * 500/300;
+  const msvg = svgEl('svg',{width:mw, height:mh, viewBox:'0 0 300 500'});
+  mapWrap.querySelector('#trafficCountyMap').appendChild(msvg);
+  drawTaiwanOutline(msvg);
+  countyRows.forEach(r=>{
+    const coord = DATA.countyCoords[r.county];
+    if(!coord) return;
+    const t = (r.rain_share - csMin) / (csMax - csMin || 1);
+    const c = svgEl('circle', {cx:coord[0], cy:coord[1], r:11, fill: seqColor(t), stroke:'var(--surface-1)', 'stroke-width':1.5});
+    const tt = ()=>`<b>${r.county}</b><br>雨天事故占比：${fmt(r.rain_share)}%`;
+    c.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    c.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    c.addEventListener('mouseleave',hideTooltip);
+    msvg.appendChild(c);
+  });
+  const legendWrap = document.createElement('div');
+  legendWrap.className = 'legend-row';
+  legendWrap.innerHTML = `<div class="legend-item"><span class="legend-dot" style="background:${seqColor(0)}"></span>低（${fmt(csMin)}%）</div><div class="legend-item"><span class="legend-dot" style="background:${seqColor(1)}"></span>高（${fmt(csMax)}%）</div><div class="legend-item">北部縣市（基隆、宜蘭）明顯偏高，推測與東北季風冬雨型態有關</div>`;
+  mapWrap.appendChild(legendWrap);
+}
+
+// ---- Reservoir ----
+const RESERVOIR_EXCLUDED = { '日月潭水庫': '主要仰賴濁水溪跨流域引水(武界壩、明潭抽蓄電廠)補注，非單純依賴集水區降雨，降雨延遲相關係數在1–31天測試中最高僅0.079(其他水庫為0.24–0.54)，此分析架構對它不具意義，故不列入比較。' };
+function renderReservoirPanel(panel){
+  const s = DATA.reservoir.summary;
+  const best = s.shimen_best_lag;
+  const excludedNames = Object.keys(RESERVOIR_EXCLUDED);
+  const availableReservoirs = DATA.reservoir.reservoirs.filter(r=>!excludedNames.includes(r));
+  panel.innerHTML = panelShell(
+    '降雨 vs 水庫蓄水率（延遲效應）',
+    `以石門水庫為例，降雨後<strong>${best.lag}天</strong>與蓄水率相關性最強(r=${best.corr})——這正是「短延遲反應」的典型案例。最濕的水庫：${s.comparison_fullest}；最乾旱：${s.comparison_driest}。`,
+    'reservoirChart',
+    '<div class="pill-select" id="reservoirSelect"></div>',
+    `雨量為集水區測站資料，蓄水率反映水庫實際操作(含放水調度)，非單純雨量-蓄水的物理平衡；不同水庫集水區大小、地形差異也會影響延遲時間長短。<br><br><strong>已排除項目：</strong>${excludedNames.map(n=>`${n}——${RESERVOIR_EXCLUDED[n]}`).join('；')}`
+  );
+
+  const pillSelect = panel.querySelector('#reservoirSelect');
+  pillSelect.innerHTML = availableReservoirs.map(r=>`<button class="${r===currentReservoir?'active':''}" data-r="${r}">${r}</button>`).join('');
+  pillSelect.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ currentReservoir = btn.dataset.r; renderReservoirPanel(panel); });
+  });
+
+  renderReservoirCharts(panel);
+}
+function renderReservoirCharts(panel){
+  const width = containerWidth('reservoirChart'); const height=300;
+  const margin={top:16,right:44,bottom:32,left:48};
+  const iw=width-margin.left-margin.right, ih=height-margin.top-margin.bottom;
+  const rows = DATA.reservoir.yearly[currentReservoir].sort((a,b)=>a.year-b.year);
+  const svg=svgEl('svg',{width,height}); const g=svgEl('g',{transform:`translate(${margin.left},${margin.top})`});
+  svg.appendChild(g); panel.querySelector('#reservoirChart').appendChild(svg);
+  const x = scaleBand(rows.map(r=>r.year), 0, iw, 0.3);
+  const [,rainMax] = extent(rows, d=>d.rain_total);
+  const y1 = scaleLinear(0, rainMax*1.15, ih, 0);
+  const y2 = scaleLinear(0, 100, ih, 0);
+  [0,0.25,0.5,0.75,1].forEach(f=>g.appendChild(svgEl('line',{x1:0,x2:iw,y1:ih-f*ih,y2:ih-f*ih,stroke:'var(--gridline)','stroke-width':1})));
+  rows.forEach(r=>{
+    const bx=x(r.year), bw=x.bandwidth(), by=y1(r.rain_total);
+    const rect = svgEl('rect',{x:bx,y:by,width:bw,height:ih-by,fill:'var(--series-1)',opacity:0.8});
+    const tt=()=>`<b>${r.year}</b><br>年雨量：${fmt(r.rain_total)} mm<br>平均蓄水率：${fmt(r.avg_capacity_rate)}%`;
+    rect.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    rect.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    rect.addEventListener('mouseleave',hideTooltip);
+    g.appendChild(rect);
+  });
+  let pathD='';
+  rows.forEach((r,i)=>{ const cx=x(r.year)+x.bandwidth()/2, cy=y2(r.avg_capacity_rate); pathD += (i===0?'M':'L')+cx+','+cy+' '; });
+  g.appendChild(svgEl('path',{d:pathD,fill:'none',stroke:'var(--series-3)','stroke-width':2.5}));
+  rows.forEach(r=>{ const cx=x(r.year)+x.bandwidth()/2, cy=y2(r.avg_capacity_rate); g.appendChild(svgEl('circle',{cx,cy,r:3.5,fill:'var(--series-3)'})); });
+  rows.forEach(r=>g.appendChild(Object.assign(svgEl('text',{x:x(r.year)+x.bandwidth()/2,y:ih+16,'text-anchor':'middle','font-size':9,fill:'var(--text-secondary)'}),{textContent:r.year})));
+  [0,0.5,1].forEach(f=>g.appendChild(Object.assign(svgEl('text',{x:-8,y:ih-f*ih+4,'text-anchor':'end','font-size':9,fill:'var(--text-secondary)'}),{textContent:fmt(rainMax*1.15*f,0)})));
+
+  // legend
+  const legendDiv = document.createElement('div');
+  legendDiv.className='legend-row';
+  legendDiv.innerHTML = `<div class="legend-item"><span class="legend-dot" style="background:var(--series-1)"></span>年總雨量(mm，長條)</div><div class="legend-item"><span class="legend-line" style="background:var(--series-3)"></span>平均蓄水率%(折線，右軸0-100)</div>`;
+  panel.querySelector('#reservoirChart').appendChild(legendDiv);
+
+  // lag analysis mini chart
+  const lagWrap = document.createElement('div');
+  lagWrap.style.marginTop = '18px';
+  lagWrap.innerHTML = `<p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px;"><strong style="color:var(--text-primary)">${currentReservoir}</strong> 降雨延遲天數 vs 蓄水率相關係數</p><div id="lagChart"></div>`;
+  panel.querySelector('#reservoirChart').appendChild(lagWrap);
+  const lagRows = DATA.reservoir.lag_analysis[currentReservoir];
+  const lw = containerWidth('reservoirChart'); const lh=180;
+  const lm={top:10,right:20,bottom:28,left:44};
+  const liw=lw-lm.left-lm.right, lih=lh-lm.top-lm.bottom;
+  const lsvg=svgEl('svg',{width:lw,height:lh}); const lg=svgEl('g',{transform:`translate(${lm.left},${lm.top})`});
+  lsvg.appendChild(lg); lagWrap.querySelector('#lagChart').appendChild(lsvg);
+  const lx = scaleLinear(0, extent(lagRows,d=>d.lag)[1], 0, liw);
+  const [lyMin,lyMax] = extent(lagRows, d=>d.corr);
+  const ly = scaleLinear(Math.min(0,lyMin*1.1), lyMax*1.15, lih, 0);
+  [0,0.5,1].forEach(f=>lg.appendChild(svgEl('line',{x1:0,x2:liw,y1:lih-f*lih,y2:lih-f*lih,stroke:'var(--gridline)','stroke-width':1})));
+  let lpath='';
+  lagRows.forEach((r,i)=>{ const cx=lx(r.lag), cy=ly(r.corr); lpath += (i===0?'M':'L')+cx+','+cy+' '; });
+  lg.appendChild(svgEl('path',{d:lpath,fill:'none',stroke:'var(--series-2)','stroke-width':2}));
+  lagRows.forEach(r=>{
+    const cx=lx(r.lag), cy=ly(r.corr);
+    const isBest = r.lag === DATA.reservoir.summary.shimen_best_lag.lag && currentReservoir==='石門水庫';
+    const dot = svgEl('circle',{cx,cy,r: isBest?5:3, fill: isBest?'var(--series-3)':'var(--series-2)'});
+    const tt=()=>`<b>延遲 ${r.lag} 天</b><br>相關係數：${fmt(r.corr,3)}`;
+    dot.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    dot.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    dot.addEventListener('mouseleave',hideTooltip);
+    lg.appendChild(dot);
+  });
+  [0,10,20,30].forEach(v=>{ if(v<= extent(lagRows,d=>d.lag)[1]) lg.appendChild(Object.assign(svgEl('text',{x:lx(v),y:lih+16,'text-anchor':'middle','font-size':9,fill:'var(--text-secondary)'}),{textContent:v+'天'})); });
+  [lyMin,lyMax].forEach(v=>{}); // noop
+  lg.appendChild(Object.assign(svgEl('text',{x:-8,y:ly(lyMax)+4,'text-anchor':'end','font-size':9,fill:'var(--text-secondary)'}),{textContent:fmt(lyMax,2)}));
+  lg.appendChild(Object.assign(svgEl('text',{x:-8,y:ly(0)+4,'text-anchor':'end','font-size':9,fill:'var(--text-secondary)'}),{textContent:'0'}));
+}
+
+// ============ Theme ============
+function initTheme(){
+  const btn = document.getElementById('themeToggle');
+  btn.addEventListener('click', ()=>{
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur==='dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    btn.textContent = next==='dark' ? '切換淺色模式' : '切換深色模式';
+    renderAll();
+  });
+}
+
+function renderAll(){
+  renderMap();
+  renderCoreChart();
+  renderOverlayPanel();
+}
+
+window.addEventListener('resize', ()=>{ renderAll(); });
+let liveRain = {}; // { 測站名稱: { precipitation, obsTime } } —— 提前宣告，避免頁面剛載入時核心圖表出錯
+buildFraming();
+buildStats();
+initTheme();
+renderLayerTimeline();
+renderTabBar();
+renderAll();
+
+// liveRain 已經在檔案前面提前宣告過了，這裡不用重複宣告
+ 
+function renderLiveOverlay(){
+  const mapDiv = document.getElementById('stationMap');
+  if(!mapDiv) return;
+  const old = document.getElementById('liveRainOverlaySvg');
+  if(old) old.remove();
+  const matched = Object.keys(liveRain).filter(name => DATA.stationCoords[name] && liveRain[name].precipitation > 0);
+  if(matched.length === 0) return;
+  mapDiv.style.position = 'relative';
+  const width = containerWidth('stationMap');
+  const height = width * 500/300;
+  const svg = svgEl('svg', {
+    width, height, viewBox:'0 0 300 500', id:'liveRainOverlaySvg',
+    style:'position:absolute;top:0;left:0;pointer-events:none;'
+  });
+  matched.forEach(name=>{
+    const {x,y} = DATA.stationCoords[name];
+    const info = liveRain[name];
+    const dot = svgEl('circle', {
+      cx:x, cy:y, r:5, fill:'var(--critical)',
+      stroke:'#fff', 'stroke-width':1.5,
+      style:'pointer-events:auto;cursor:pointer;'
+    });
+    const tt = ()=>`<b>${name}</b>（即時雨量）<br>今日累積：${info.precipitation.toFixed(1)} mm<br>觀測時間：${(info.obsTime||'').replace('T',' ').slice(0,16)}`;
+    dot.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    dot.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    dot.addEventListener('mouseleave', hideTooltip);
+    svg.appendChild(dot);
+  });
+  mapDiv.appendChild(svg);
+}
+ 
+async function fetchLiveRain(){
+  const statusEl = document.getElementById('liveRainStatus');
+  const listEl = document.getElementById('liveRainList');
+  if(statusEl) statusEl.textContent = '讀取中...';
+  try{
+    const res = await fetch('rain-live.json?t=' + Date.now());
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const json = await res.json();
+    const stations = (json.records && json.records.Station) || [];
+    liveRain = {};
+    stations.forEach(s=>{
+      const name = s.StationName;
+      const rf = s.RainfallElement || {};
+      const now = rf.Now && parseFloat(rf.Now.Precipitation);
+      if(name && !isNaN(now) && now >= 0){
+        liveRain[name] = { precipitation: now, obsTime: (s.ObsTime && s.ObsTime.DateTime) || '' };
+      }
+    });
+    const matched = Object.keys(liveRain).filter(name => DATA.stationCoords[name]);
+    const updatedAt = new Date().toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'});
+    if(statusEl) statusEl.textContent = `✅ 已更新（${updatedAt}），共取得 ${stations.length} 個測站，其中 ${matched.length} 個與本儀表板測站對應。`;
+    if(listEl){
+      const top = matched
+        .map(name => ({name, mm: liveRain[name].precipitation}))
+        .sort((a,b)=>b.mm-a.mm)
+        .slice(0,8);
+      listEl.innerHTML = top.length
+        ? top.map(t=>`<div class="legend-item"><span class="legend-dot" style="background:var(--critical)"></span>${t.name}：${t.mm.toFixed(1)} mm</div>`).join('')
+        : '<div class="legend-item">目前無測站有累積雨量</div>';
+    }
+    renderLiveOverlay();
+    renderCoreChart();
+  }catch(err){
+    console.error('讀取即時雨量快照失敗：', err);
+    if(statusEl){
+      statusEl.innerHTML = '❌ 讀取失敗，rain-live.json 可能還沒產生（請確認 GitHub Actions 是否已成功執行過一次）。';
+    }
+  }
+}
+
+ 
+document.getElementById('liveRainRefreshBtn') &&
+  document.getElementById('liveRainRefreshBtn').addEventListener('click', fetchLiveRain);
+window.addEventListener('resize', renderLiveOverlay);
+ 
+fetchLiveRain();
+setInterval(fetchLiveRain, 10*60*1000); // 每10分鐘自動更新一次
+ 
+ 
+</script>
+</body>
+</html>
