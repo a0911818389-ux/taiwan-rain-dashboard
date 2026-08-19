@@ -595,7 +595,13 @@ function renderVegPanel(panel){
   const x0 = scaleBand(crops, 0, iw, 0.25);
   const x1 = scaleBand(typhoons, 0, x0.bandwidth(), 0.15);
   const [yMin,yMax] = extent(rows, d=>d.pct_change);
-  const y = scaleLinear(Math.min(0,yMin*1.1), yMax*1.15, ih, 0);
+  const yDomainMin = Math.min(0,yMin*1.1), yDomainMax = yMax*1.15;
+  const y = scaleLinear(yDomainMin, yDomainMax, ih, 0);
+  [0,0.25,0.5,0.75,1].forEach(f=>{
+    const v = yDomainMin + f*(yDomainMax-yDomainMin);
+    g.appendChild(svgEl('line',{x1:0,x2:iw,y1:y(v),y2:y(v),stroke:'var(--gridline)','stroke-width':1}));
+    g.appendChild(Object.assign(svgEl('text',{x:-8,y:y(v)+4,'text-anchor':'end','font-size':10,fill:'var(--text-secondary)'}),{textContent:fmt(v,0)+'%'}));
+  });
   g.appendChild(svgEl('line',{x1:0,x2:iw,y1:y(0),y2:y(0),stroke:'var(--baseline)','stroke-width':1.5}));
   crops.forEach(crop=>{
     typhoons.forEach(ty=>{
