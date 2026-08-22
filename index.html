@@ -411,6 +411,10 @@ function renderFloodPanel(panel){
   const data = DATA.core;
   const svg=svgEl('svg',{width,height}); const g=svgEl('g',{transform:`translate(${margin.left},${margin.top})`});
   svg.appendChild(g); panel.querySelector('#floodChart').appendChild(svg);
+  const legendDiv = document.createElement('div');
+  legendDiv.className = 'legend-row';
+  legendDiv.innerHTML = `<div class="legend-item"><span class="legend-dot" style="background:var(--series-3)"></span>目前選擇的測站（${currentStation}）</div><div class="legend-item"><span class="legend-dot" style="background:var(--series-1)"></span>其他測站</div>`;
+  panel.querySelector('#floodChart').appendChild(legendDiv);
   const [,xMax]=extent(data,d=>d.max_daily_rain);
   const [,yMax]=extent(data,d=>d.flood_count);
   const x=scaleLinear(0,xMax*1.08,0,iw); const y=scaleLinear(0,yMax*1.1,ih,0);
