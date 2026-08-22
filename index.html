@@ -182,6 +182,9 @@ function drawTaiwanOutline(svg){
     d: TAIWAN_OUTLINE, fill:'var(--surface-2)', stroke:'var(--text-muted)', 'stroke-width':1.4, opacity:1
   }));
 }
+// 台灣本島輪廓（TAIWAN_OUTLINE）未包含金門/馬祖(連江)/澎湖等外島（地理位置遠、比例尺無法呈現），
+// 以縣市座標(countyCoords)畫「地理分布」小地圖時，這幾個縣市要排除，避免變成沒有地圖依據、憑空漂浮的圓點。
+const OUTLYING_COUNTIES = ['金門縣','連江縣','澎湖縣'];
 
 let currentStation = DATA.floodSummary.top_station.station;
 let currentTab = 'flood';
@@ -524,12 +527,19 @@ function renderDenguePanel(panel){
     'dengueChart', '',
     `最大流行年為${s.biggest_year.year}年（${fmt(s.biggest_year.cases,0)}例）。此處僅呈現時間相關性，非直接降雨數值比對；病媒蚊孳生也受氣溫、積水管理等因素共同影響。`
   );
-  const width = containerWidth('dengueChart'); const height=280;
+  // ---- 並排版面：左邊月份長條圖、右邊縣市地理分布小地圖 ----
+  const rowWrap = document.createElement('div');
+  rowWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;';
+  rowWrap.innerHTML = `<div id="dengueBarChart" style="flex:1 1 320px;min-width:0;"></div><div style="flex:0 0 240px;max-width:240px;"><p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px;"><strong style="color:var(--text-primary)">地理分布：</strong>各縣市累積病例數（點越大＝病例越多；因高雄/臺南數量懸殊，改用平方根比例呈現，讓其他縣市仍可辨識）</p><div id="dengueCountyMap"></div></div>`;
+  panel.querySelector('#dengueChart').appendChild(rowWrap);
+  const mapWrap = rowWrap.lastElementChild;
+
+  const width = containerWidth('dengueBarChart'); const height=280;
   const margin={top:16,right:20,bottom:32,left:52};
   const iw=width-margin.left-margin.right, ih=height-margin.top-margin.bottom;
   const rows = DATA.dengue.season;
   const svg=svgEl('svg',{width,height}); const g=svgEl('g',{transform:`translate(${margin.left},${margin.top})`});
-  svg.appendChild(g); panel.querySelector('#dengueChart').appendChild(svg);
+  svg.appendChild(g); rowWrap.querySelector('#dengueBarChart').appendChild(svg);
   const x = scaleBand(rows.map(r=>r.month), 0, iw, 0.3);
   const [,yMax] = extent(rows, d=>d.cases);
   const y = scaleLinear(0, yMax*1.15, ih, 0);
@@ -547,16 +557,10 @@ function renderDenguePanel(panel){
   rows.forEach(r=>g.appendChild(Object.assign(svgEl('text',{x:x(r.month)+x.bandwidth()/2,y:ih+16,'text-anchor':'middle','font-size':10,fill:'var(--text-secondary)'}),{textContent:r.month})));
   [0,0.5,1].forEach(f=>g.appendChild(Object.assign(svgEl('text',{x:-8,y:ih-f*ih+4,'text-anchor':'end','font-size':10,fill:'var(--text-secondary)'}),{textContent:fmt(yMax*1.15*f,0)})));
 
-  // ---- 縣市地理分布：累積病例數(1998-2024) ----
-  const mapWrap = document.createElement('div');
-  mapWrap.style.marginTop = '20px';
-  mapWrap.innerHTML = `<p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px;"><strong style="color:var(--text-primary)">地理分布：</strong>各縣市累積病例數（點越大＝病例越多；因高雄/臺南數量懸殊，改用平方根比例呈現，讓其他縣市仍可辨識）</p><div id="dengueCountyMap"></div>`;
-  panel.querySelector('#dengueChart').appendChild(mapWrap);
-
-  const countyRows = DATA.dengue.county_ranking;
+  const countyRows = DATA.dengue.county_ranking.filter(r=>!OUTLYING_COUNTIES.includes(r.county));
   const [,caseMax] = extent(countyRows, d=>d.cases);
   const dRScale = scaleLinear(0, Math.sqrt(caseMax||1), 3, 26);
-  const mw = Math.min(containerWidth('dengueChart'), 480);
+  const mw = Math.min(containerWidth('dengueCountyMap'), 240);
   const mh = mw * 500/300;
   const msvg = svgEl('svg',{width:mw, height:mh, viewBox:'0 0 300 500'});
   mapWrap.querySelector('#dengueCountyMap').appendChild(msvg);
@@ -574,7 +578,7 @@ function renderDenguePanel(panel){
   });
   const legendWrap = document.createElement('div');
   legendWrap.className = 'legend-row';
-  legendWrap.innerHTML = `<div class="legend-item">高雄市/臺南市合計佔全國約${fmt((countyRows.find(r=>r.county==='高雄市').cases+countyRows.find(r=>r.county==='臺南市').cases)/DATA.dengue.summary.total_cases*100,0)}%，長年為登革熱重災區，與當地氣候溫暖潮濕、病媒蚊密度較高有關</div>`;
+  legendWrap.innerHTML = `<div class="legend-item">高雄市/臺南市合計佔全國約${fmt((countyRows.find(r=>r.county==='高雄市').cases+countyRows.find(r=>r.county==='臺南市').cases)/DATA.dengue.summary.total_cases*100,0)}%，長年為登革熱重災區，與當地氣候溫暖潮濕、病媒蚊密度較高有關</div><div class="legend-item">地圖未包含金門、連江、澎湖（外島，地理位置較遠、比例尺無法呈現）</div>`;
   mapWrap.appendChild(legendWrap);
 }
 
@@ -646,12 +650,19 @@ function renderTrafficPanel(panel){
     'trafficChart', '',
   `雨天事故的死亡占比(${(s.class_compare.fatal_share_rain*100).toFixed(1)}%)與晴天(${(s.class_compare.fatal_share_nonrain*100).toFixed(1)}%)接近，卡方檢定顯示此差異未達統計顯著(χ²=1.43, p=0.23)，無法證實下雨會影響死亡率，僅供參考。資料含天氣欄位僅2022–2025年，2013–2021年僅有總事故數。`
   );
-  const width = containerWidth('trafficChart'); const height=280;
+  // ---- 並排版面：左邊月份長條圖、右邊縣市地理分布小地圖 ----
+  const rowWrap = document.createElement('div');
+  rowWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;';
+  rowWrap.innerHTML = `<div id="trafficBarChart" style="flex:1 1 320px;min-width:0;"></div><div style="flex:0 0 240px;max-width:240px;"><p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px;"><strong style="color:var(--text-primary)">地理分布：</strong>各縣市雨天事故占比（顏色越深＝占比越高）</p><div id="trafficCountyMap"></div></div>`;
+  panel.querySelector('#trafficChart').appendChild(rowWrap);
+  const mapWrap = rowWrap.lastElementChild;
+
+  const width = containerWidth('trafficBarChart'); const height=280;
   const margin={top:16,right:20,bottom:32,left:52};
   const iw=width-margin.left-margin.right, ih=height-margin.top-margin.bottom;
   const rows = DATA.traffic.season;
   const svg=svgEl('svg',{width,height}); const g=svgEl('g',{transform:`translate(${margin.left},${margin.top})`});
-  svg.appendChild(g); panel.querySelector('#trafficChart').appendChild(svg);
+  svg.appendChild(g); rowWrap.querySelector('#trafficBarChart').appendChild(svg);
   const x = scaleBand(rows.map(r=>r.month), 0, iw, 0.3);
   const [,yMax] = extent(rows, d=>d.rain_share);
   const y = scaleLinear(0, yMax*1.2, ih, 0);
@@ -668,15 +679,9 @@ function renderTrafficPanel(panel){
   rows.forEach(r=>g.appendChild(Object.assign(svgEl('text',{x:x(r.month)+x.bandwidth()/2,y:ih+16,'text-anchor':'middle','font-size':10,fill:'var(--text-secondary)'}),{textContent:r.month})));
   [0,0.5,1].forEach(f=>g.appendChild(Object.assign(svgEl('text',{x:-8,y:ih-f*ih+4,'text-anchor':'end','font-size':10,fill:'var(--text-secondary)'}),{textContent:fmt(yMax*1.2*f)+'%'})));
 
-  // ---- 縣市地理分布：雨天事故占比 ----
-  const mapWrap = document.createElement('div');
-  mapWrap.style.marginTop = '20px';
-  mapWrap.innerHTML = `<p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px;"><strong style="color:var(--text-primary)">地理分布：</strong>各縣市雨天事故占比（顏色越深＝占比越高）</p><div id="trafficCountyMap"></div>`;
-  panel.querySelector('#trafficChart').appendChild(mapWrap);
-
-  const countyRows = DATA.traffic.county_by_share;
+  const countyRows = DATA.traffic.county_by_share.filter(r=>!OUTLYING_COUNTIES.includes(r.county));
   const [csMin, csMax] = extent(countyRows, d=>d.rain_share);
-  const mw = Math.min(containerWidth('trafficChart'), 480);
+  const mw = Math.min(containerWidth('trafficCountyMap'), 240);
   const mh = mw * 500/300;
   const msvg = svgEl('svg',{width:mw, height:mh, viewBox:'0 0 300 500'});
   mapWrap.querySelector('#trafficCountyMap').appendChild(msvg);
@@ -694,7 +699,7 @@ function renderTrafficPanel(panel){
   });
   const legendWrap = document.createElement('div');
   legendWrap.className = 'legend-row';
-  legendWrap.innerHTML = `<div class="legend-item"><span class="legend-dot" style="background:${seqColor(0)}"></span>低（${fmt(csMin)}%）</div><div class="legend-item"><span class="legend-dot" style="background:${seqColor(1)}"></span>高（${fmt(csMax)}%）</div><div class="legend-item">北部縣市（基隆、宜蘭）明顯偏高，推測與東北季風冬雨型態有關</div>`;
+  legendWrap.innerHTML = `<div class="legend-item"><span class="legend-dot" style="background:${seqColor(0)}"></span>低（${fmt(csMin)}%）</div><div class="legend-item"><span class="legend-dot" style="background:${seqColor(1)}"></span>高（${fmt(csMax)}%）</div><div class="legend-item">北部縣市（基隆、宜蘭）明顯偏高，推測與東北季風冬雨型態有關</div><div class="legend-item">地圖未包含金門、連江、澎湖（外島，地理位置較遠、比例尺無法呈現）</div>`;
   mapWrap.appendChild(legendWrap);
 }
 
