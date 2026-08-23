@@ -658,7 +658,7 @@ function renderTrafficPanel(panel){
   const mapWrap = rowWrap.lastElementChild;
 
   const width = containerWidth('trafficBarChart'); const height=280;
-  const margin={top:16,right:20,bottom:32,left:52};
+  const margin={top:16,right:20,bottom:46,left:52};
   const iw=width-margin.left-margin.right, ih=height-margin.top-margin.bottom;
   const rows = DATA.traffic.season;
   const svg=svgEl('svg',{width,height}); const g=svgEl('g',{transform:`translate(${margin.left},${margin.top})`});
@@ -678,6 +678,7 @@ function renderTrafficPanel(panel){
   });
   rows.forEach(r=>g.appendChild(Object.assign(svgEl('text',{x:x(r.month)+x.bandwidth()/2,y:ih+16,'text-anchor':'middle','font-size':10,fill:'var(--text-secondary)'}),{textContent:r.month})));
   [0,0.5,1].forEach(f=>g.appendChild(Object.assign(svgEl('text',{x:-8,y:ih-f*ih+4,'text-anchor':'end','font-size':10,fill:'var(--text-secondary)'}),{textContent:fmt(yMax*1.2*f)+'%'})));
+  g.appendChild(Object.assign(svgEl('text',{x:iw/2,y:ih+32,'text-anchor':'middle','font-size':10.5,fill:'var(--text-secondary)'}),{textContent:'月份（2022–2025年，4年合計，非單一年份）'}));
 
   const countyRows = DATA.traffic.county_by_share.filter(r=>!OUTLYING_COUNTIES.includes(r.county));
   const [csMin, csMax] = extent(countyRows, d=>d.rain_share);
