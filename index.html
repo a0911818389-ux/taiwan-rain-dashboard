@@ -50,7 +50,7 @@
   .stat-tile .label { font-size:11.5px; color:var(--text-secondary); margin-bottom:6px; }
   .stat-tile .value { font-size:22px; font-weight:600; }
   .stat-tile .note { font-size:11px; color:var(--text-muted); margin-top:4px; }
-  .core-grid { display:grid; grid-template-columns: 300px 1fr; gap:18px; }
+  .core-grid { display:grid; grid-template-columns: 390px 1fr; gap:18px; }
   @media (max-width: 760px) { .core-grid { grid-template-columns: 1fr; } }
   .station-pill { display:inline-flex; align-items:center; gap:6px; background:var(--tab-bg); border-radius:999px; padding:4px 12px; font-size:12.5px; margin-bottom:10px; }
   .station-pill b { color: var(--series-1); }
@@ -530,7 +530,7 @@ function renderDenguePanel(panel){
   // ---- 並排版面：左邊月份長條圖、右邊縣市地理分布小地圖 ----
   const rowWrap = document.createElement('div');
   rowWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;';
-  rowWrap.innerHTML = `<div id="dengueBarChart" style="flex:1 1 320px;min-width:0;"></div><div style="flex:0 0 240px;max-width:240px;"><p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px;"><strong style="color:var(--text-primary)">地理分布：</strong>各縣市累積病例數（點越大＝病例越多；因高雄/臺南數量懸殊，改用平方根比例呈現，讓其他縣市仍可辨識）</p><div id="dengueCountyMap"></div></div>`;
+  rowWrap.innerHTML = `<div id="dengueBarChart" style="flex:1 1 320px;min-width:0;"></div><div style="flex:1 1 320px;min-width:0;"><p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px;"><strong style="color:var(--text-primary)">地理分布：</strong>各縣市累積病例數（點越大＝病例越多；因高雄/臺南數量懸殊，改用平方根比例呈現，讓其他縣市仍可辨識）</p><div id="dengueCountyMap"></div></div>`;
   panel.querySelector('#dengueChart').appendChild(rowWrap);
   const mapWrap = rowWrap.lastElementChild;
 
@@ -560,7 +560,7 @@ function renderDenguePanel(panel){
   const countyRows = DATA.dengue.county_ranking.filter(r=>!OUTLYING_COUNTIES.includes(r.county));
   const [,caseMax] = extent(countyRows, d=>d.cases);
   const dRScale = scaleLinear(0, Math.sqrt(caseMax||1), 3, 26);
-  const mw = Math.min(containerWidth('dengueCountyMap'), 240);
+  const mw = Math.min(containerWidth('dengueCountyMap'), 320);
   const mh = mw * 500/300;
   const msvg = svgEl('svg',{width:mw, height:mh, viewBox:'0 0 300 500'});
   mapWrap.querySelector('#dengueCountyMap').appendChild(msvg);
@@ -653,7 +653,7 @@ function renderTrafficPanel(panel){
   // ---- 並排版面：左邊月份長條圖、右邊縣市地理分布小地圖 ----
   const rowWrap = document.createElement('div');
   rowWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;';
-  rowWrap.innerHTML = `<div id="trafficBarChart" style="flex:1 1 320px;min-width:0;"></div><div style="flex:0 0 240px;max-width:240px;"><p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px;"><strong style="color:var(--text-primary)">地理分布：</strong>各縣市雨天事故占比（顏色越深＝占比越高）</p><div id="trafficCountyMap"></div></div>`;
+  rowWrap.innerHTML = `<div id="trafficBarChart" style="flex:1 1 320px;min-width:0;"></div><div style="flex:1 1 320px;min-width:0;"><p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px;"><strong style="color:var(--text-primary)">地理分布：</strong>各縣市雨天事故占比（顏色越深＝占比越高）</p><div id="trafficCountyMap"></div></div>`;
   panel.querySelector('#trafficChart').appendChild(rowWrap);
   const mapWrap = rowWrap.lastElementChild;
 
@@ -682,7 +682,7 @@ function renderTrafficPanel(panel){
 
   const countyRows = DATA.traffic.county_by_share.filter(r=>!OUTLYING_COUNTIES.includes(r.county));
   const [csMin, csMax] = extent(countyRows, d=>d.rain_share);
-  const mw = Math.min(containerWidth('trafficCountyMap'), 240);
+  const mw = Math.min(containerWidth('trafficCountyMap'), 320);
   const mh = mw * 500/300;
   const msvg = svgEl('svg',{width:mw, height:mh, viewBox:'0 0 300 500'});
   mapWrap.querySelector('#trafficCountyMap').appendChild(msvg);
