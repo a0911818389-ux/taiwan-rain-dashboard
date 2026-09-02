@@ -130,6 +130,25 @@
   </div>
 
   <div class="card">
+    <h2>縣市綜合地圖：降雨關聯總覽
+      <button class="theme-toggle" id="countyMapRefreshBtn" style="margin-left:10px;font-size:11px;padding:4px 10px;">重新整理即時雨量</button>
+    </h2>
+    <p class="desc">同一張台灣地圖上呈現四項降雨關聯分析的「共同性」——哪些縣市在多個面向上都與降雨密切相關。登革熱病例、交通事故雨天占比為縣市層級資料，直接疊圖比較；PM2.5與水庫蓄水目前僅有全國/單一測站層級的資料，故以徽章與圖釘方式輔助呈現，並誠實標示其資料粒度限制。地圖並疊加即時雨量測站（每10分鐘自動更新一次，與上方「即時雨量」卡片同步）。</p>
+    <div class="pill-select" id="countyMapMetricSelect" style="margin-bottom:10px;"></div>
+    <div class="core-grid">
+      <div>
+        <div id="countyMapSvgWrap" style="position:relative;"></div>
+      </div>
+      <div>
+        <div id="countyMapBadges" class="legend-row" style="margin-bottom:10px;"></div>
+        <div id="countyMapRanking"></div>
+      </div>
+    </div>
+    <div class="legend-row" id="countyMapLegend" style="margin-top:10px;"></div>
+    <p class="desc" id="countyMapNote" style="margin-top:8px;"></p>
+  </div>
+
+  <div class="card">
     <h2>降雨影響的時間層次</h2>
     <p class="desc">七個疊加維度，依「降雨後多久才顯現影響」排成一條時間軸——這也是選擇下方分頁時的分組依據。</p>
     <div class="layer-timeline" id="layerTimeline"></div>
@@ -582,6 +601,182 @@ function renderDenguePanel(panel){
   mapWrap.appendChild(legendWrap);
 }
 
+// ============ 縣市綜合地圖（跨主題共同性） ============
+const RESERVOIR_HOST_COUNTY = {
+  '石門水庫':'桃園市', '翡翠水庫':'新北市', '寶山第二水庫':'新竹市',
+  '明德水庫':'苗栗縣', '鯉魚潭水庫':'苗栗縣', '德基水庫':'臺中市',
+  '日月潭水庫':'南投縣', '曾文水庫':'嘉義縣',
+};
+const COUNTY_MAP_METRICS = [
+  {id:'combined', label:'綜合指數（登革熱＋交通事故）'},
+  {id:'dengue', label:'登革熱累積病例'},
+  {id:'traffic', label:'交通事故雨天占比'},
+];
+let currentCountyMapMetric = 'combined';
+
+function countyMapData(){
+  const dengueMap = {};
+  DATA.dengue.county_ranking.forEach(r=>{ dengueMap[r.county] = r.cases; });
+  const trafficMap = {};
+  DATA.traffic.county_by_share.forEach(r=>{ trafficMap[r.county] = r.rain_share; });
+  const norm = (obj)=>{
+    const vals = Object.values(obj);
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    const out = {};
+    Object.entries(obj).forEach(([k,v])=>{ out[k] = hi>lo ? (v-lo)/(hi-lo) : 0.5; });
+    return out;
+  };
+  const dengueNorm = norm(dengueMap);
+  const trafficNorm = norm(trafficMap);
+  const counties = Object.keys(DATA.countyCoords).filter(c=>!OUTLYING_COUNTIES.includes(c));
+  return counties.map(c=>{
+    const hasD = dengueMap[c] !== undefined;
+    const hasT = trafficMap[c] !== undefined;
+    let combined = null;
+    if(hasD && hasT) combined = (dengueNorm[c]+trafficNorm[c])/2;
+    else if(hasD) combined = dengueNorm[c];
+    else if(hasT) combined = trafficNorm[c];
+    return {
+      county:c, dengueCases: dengueMap[c]||0, hasDengue:hasD,
+      trafficShare: trafficMap[c], hasTraffic:hasT,
+      combined,
+    };
+  });
+}
+
+function renderCountyMapPanel(){
+  const wrap = document.getElementById('countyMapSvgWrap');
+  const pillSel = document.getElementById('countyMapMetricSelect');
+  if(!wrap || !pillSel) return;
+
+  pillSel.innerHTML = COUNTY_MAP_METRICS.map(m=>`<button class="${m.id===currentCountyMapMetric?'active':''}" data-m="${m.id}">${m.label}</button>`).join('');
+  pillSel.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ currentCountyMapMetric = btn.dataset.m; renderCountyMapPanel(); });
+  });
+
+  const rows = countyMapData();
+  const width = Math.min(containerWidth('countyMapSvgWrap'), 340);
+  const height = width * 500/300;
+  wrap.innerHTML = '';
+  const svg = svgEl('svg', {width, height, viewBox:'0 0 300 500', id:'countyMapSvg'});
+  wrap.appendChild(svg);
+  drawTaiwanOutline(svg);
+
+  const metricKey = currentCountyMapMetric === 'dengue' ? 'dengueCases'
+    : currentCountyMapMetric === 'traffic' ? 'trafficShare' : 'combined';
+  const validVals = rows.map(r=>r[metricKey]).filter(v=>v!==null && v!==undefined);
+  const [,vMax] = extent(validVals.map(v=>({v})), d=>d.v);
+  const scaleForR = currentCountyMapMetric==='dengue'
+    ? scaleLinear(0, Math.sqrt(vMax||1), 3.5, 24)
+    : scaleLinear(0, vMax||1, 4, 20);
+
+  rows.forEach(r=>{
+    const coord = DATA.countyCoords[r.county];
+    if(!coord) return;
+    const val = r[metricKey];
+    const has = currentCountyMapMetric==='dengue' ? r.hasDengue
+      : currentCountyMapMetric==='traffic' ? r.hasTraffic : (val!==null);
+    const rr = has ? (currentCountyMapMetric==='dengue' ? scaleForR(Math.sqrt(val)) : scaleForR(val)) : 2;
+    const bothHave = r.hasDengue && r.hasTraffic;
+    const fill = !has ? 'var(--text-muted)' : (bothHave ? 'var(--series-3)' : 'var(--series-2)');
+    const c = svgEl('circle', {
+      cx:coord[0], cy:coord[1], r:rr, fill, opacity: has?0.75:0.3,
+      stroke:'var(--surface-1)', 'stroke-width':1,
+    });
+    const tt = ()=>{
+      let lines = `<b>${r.county}</b>`;
+      lines += r.hasDengue ? `<br>登革熱累積病例：${fmt(r.dengueCases,0)}` : `<br>登革熱：無資料`;
+      lines += r.hasTraffic ? `<br>交通事故雨天占比：${fmt(r.trafficShare,1)}%` : `<br>交通事故：無資料`;
+      if(bothHave) lines += `<br><i>兩項指標皆有資料，共同性較高</i>`;
+      return lines;
+    };
+    c.addEventListener('mouseenter', (e)=>showTooltip(tt(), e.pageX, e.pageY));
+    c.addEventListener('mousemove', (e)=>showTooltip(tt(), e.pageX, e.pageY));
+    c.addEventListener('mouseleave', hideTooltip);
+    svg.appendChild(c);
+  });
+
+  // 水庫圖釘（點位資料，非縣市層級，位置為主管縣市概略座標）
+  DATA.reservoir.reservoirs.forEach(name=>{
+    const host = RESERVOIR_HOST_COUNTY[name];
+    const coord = host && DATA.countyCoords[host];
+    if(!coord) return;
+    const px = coord[0] + 9, py = coord[1] - 9;
+    const pin = svgEl('rect', {x:px-3, y:py-3, width:6, height:6, fill:'var(--series-4)', stroke:'var(--surface-1)', 'stroke-width':1, transform:`rotate(45 ${px} ${py})`});
+    const isShimen = name === '石門水庫';
+    const tt = ()=>`<b>${name}</b>（${host}，約略位置）` + (isShimen ? `<br>降雨延遲${DATA.reservoir.summary.shimen_best_lag.lag}天與蓄水率相關性最強 r=${DATA.reservoir.summary.shimen_best_lag.corr}` : '');
+    pin.addEventListener('mouseenter', (e)=>showTooltip(tt(), e.pageX, e.pageY));
+    pin.addEventListener('mousemove', (e)=>showTooltip(tt(), e.pageX, e.pageY));
+    pin.addEventListener('mouseleave', hideTooltip);
+    svg.appendChild(pin);
+  });
+
+  renderCountyMapLiveOverlay();
+
+  // 排行榜
+  const rankEl = document.getElementById('countyMapRanking');
+  if(rankEl){
+    const sorted = rows.filter(r=>r[metricKey]!==null && r[metricKey]!==undefined).sort((a,b)=>b[metricKey]-a[metricKey]).slice(0,8);
+    const label = currentCountyMapMetric==='dengue' ? '病例數' : currentCountyMapMetric==='traffic' ? '雨天占比%' : '綜合指數(0-1)';
+    rankEl.innerHTML = `<p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px;"><strong style="color:var(--text-primary)">前8名（${label}）</strong></p>` +
+      sorted.map((r,i)=>`<div class="legend-item">${i+1}. ${r.county}：${currentCountyMapMetric==='traffic'?fmt(r.trafficShare,1)+'%':currentCountyMapMetric==='dengue'?fmt(r.dengueCases,0):fmt(r.combined,2)}</div>`).join('');
+  }
+
+  // 徽章：PM2.5、水庫（非縣市層級指標）
+  const badgesEl = document.getElementById('countyMapBadges');
+  if(badgesEl){
+    badgesEl.innerHTML = `
+      <div class="legend-item"><span class="legend-dot" style="background:var(--series-1)"></span>PM2.5：全國${DATA.pm25.summary.n_stations}站平均，與降雨相關係數 ${DATA.pm25.summary.correlation}（無縣市別資料）</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--series-4)"></span>水庫蓄水：8座水庫（菱形圖釘），石門水庫降雨後${DATA.reservoir.summary.shimen_best_lag.lag}天相關性最強 r=${DATA.reservoir.summary.shimen_best_lag.corr}</div>
+    `;
+  }
+
+  const legendEl = document.getElementById('countyMapLegend');
+  if(legendEl){
+    legendEl.innerHTML = `
+      <div class="legend-item"><span class="legend-dot" style="background:var(--series-3)"></span>登革熱＋交通事故皆有資料（共同性縣市）</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--series-2)"></span>僅一項指標有資料</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--critical)"></span>即時雨量測站（自動更新）</div>
+      <div class="legend-item">◆ 水庫概略位置（非縣市層級資料）</div>
+    `;
+  }
+
+  const noteEl = document.getElementById('countyMapNote');
+  if(noteEl){
+    noteEl.textContent = '說明：登革熱與交通事故為縣市層級統計，可直接疊圖比較「共同性」；PM2.5目前僅有全國81站月平均，水庫蓄水為8座水庫個別資料，兩者皆非縣市層級，故以徽章／圖釘輔助呈現，避免用不存在的縣市別數據誤導判讀。地圖未包含金門、連江、澎湖（外島，比例尺無法呈現，僅列於排行榜）。';
+  }
+}
+
+function renderCountyMapLiveOverlay(){
+  const wrap = document.getElementById('countyMapSvgWrap');
+  if(!wrap) return;
+  const old = document.getElementById('countyMapLiveSvg');
+  if(old) old.remove();
+  const matched = Object.keys(liveRain).filter(name => DATA.stationCoords[name] && liveRain[name].precipitation > 0);
+  if(matched.length === 0) return;
+  const width = Math.min(containerWidth('countyMapSvgWrap'), 340);
+  const height = width * 500/300;
+  const svg = svgEl('svg', {
+    width, height, viewBox:'0 0 300 500', id:'countyMapLiveSvg',
+    style:'position:absolute;top:0;left:0;pointer-events:none;'
+  });
+  matched.forEach(name=>{
+    const {x,y} = DATA.stationCoords[name];
+    const info = liveRain[name];
+    const dot = svgEl('circle', {
+      cx:x, cy:y, r:3.5, fill:'var(--critical)',
+      stroke:'#fff', 'stroke-width':1, opacity:0.9,
+      style:'pointer-events:auto;cursor:pointer;'
+    });
+    const tt = ()=>`<b>${name}</b>（即時雨量）<br>今日累積：${info.precipitation.toFixed(1)} mm<br>觀測時間：${(info.obsTime||'').replace('T',' ').slice(0,16)}`;
+    dot.addEventListener('mouseenter',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    dot.addEventListener('mousemove',(e)=>showTooltip(tt(), e.pageX, e.pageY));
+    dot.addEventListener('mouseleave', hideTooltip);
+    svg.appendChild(dot);
+  });
+  wrap.appendChild(svg);
+}
+
 // ---- Vegetable Price ----
 function renderVegPanel(panel){
   const s = DATA.veg.summary;
@@ -811,6 +1006,7 @@ function renderAll(){
   renderMap();
   renderCoreChart();
   renderOverlayPanel();
+  renderCountyMapPanel();
 }
 
 window.addEventListener('resize', ()=>{ renderAll(); });
@@ -887,6 +1083,7 @@ async function fetchLiveRain(){
     }
     renderLiveOverlay();
     renderCoreChart();
+    renderCountyMapLiveOverlay();
   }catch(err){
     console.error('讀取即時雨量快照失敗：', err);
     if(statusEl){
@@ -898,8 +1095,11 @@ async function fetchLiveRain(){
  
 document.getElementById('liveRainRefreshBtn') &&
   document.getElementById('liveRainRefreshBtn').addEventListener('click', fetchLiveRain);
+document.getElementById('countyMapRefreshBtn') &&
+  document.getElementById('countyMapRefreshBtn').addEventListener('click', fetchLiveRain);
 window.addEventListener('resize', renderLiveOverlay);
- 
+window.addEventListener('resize', renderCountyMapLiveOverlay);
+
 fetchLiveRain();
 setInterval(fetchLiveRain, 10*60*1000); // 每10分鐘自動更新一次
  
